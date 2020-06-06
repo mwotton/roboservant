@@ -1,56 +1,28 @@
-
-
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE KindSignatures #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE QuantifiedConstraints #-}
+{-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE TypeOperators #-}
-{-# LANGUAGE DataKinds #-}
-{-# LANGUAGE KindSignatures #-}
-{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-module Lib where
 
-import GHC.TypeLits
+module Roboservant where
+
 import Control.Applicative
+import GHC.TypeLits
 import Servant.API
-
-newtype Foo = Foo Int
-  deriving Show
-
-newtype Bar = Bar String
-  deriving Show
-
-type FooApi = "foo" :> "fle" :> "far" :> Get '[JSON] Foo
-
-type BarApi = "bar" :>  ReqBody '[JSON] Foo :> Post '[JSON] Bar
-
-type Api = FooApi
-      :<|> BarApi
 
 type family ExtractRespType (path :: *) :: * where
   ExtractRespType (_ :> b) = ExtractRespType b
   ExtractRespType (Verb (method :: StdMethod) (responseCode :: Nat) (contentTypes :: [*]) (respType :: *)) = respType
-
-type Foo' = ExtractRespType FooApi
-
-
-test :: ()
-test = foo'EqualFoo where
-  foo'EqualFoo :: Foo' ~ Foo => ()
-  foo'EqualFoo = ()
-
-
-test' :: ()
-test' = blah where
-  blah :: ExtractRespTypes Api ~ '[Foo, Bar] => ()
-  blah = ()
 
 type family ExtractRespTypes (paths :: *) :: [*] where
   ExtractRespTypes (a :<|> b) = ExtractRespTypes a <> ExtractRespTypes b
@@ -79,8 +51,6 @@ instance (Show (List f as), forall a. Show a => Show (f a), Show a) => Show (Lis
 storeOfApi :: forall api xs. (ExtractRespTypes api ~ xs, BuildStore [] xs) => List [] (ExtractRespTypes api)
 storeOfApi = buildStore
 
-storeOfOurApi = storeOfApi @Api
-
 class BuildStore f (xs :: [*]) where
   buildStore :: List f xs
 
@@ -89,10 +59,6 @@ instance BuildStore f '[] where
 
 instance (BuildStore f xs, Alternative f) => BuildStore f (x ': xs) where
   buildStore = Cons empty (buildStore @_ @xs)
-
-main :: IO ()
-main = pure ()
-
 -- 1.
 -- Instead of just the resptype, let's return a tuple of (resptype, '[]::[ ? respType])
 

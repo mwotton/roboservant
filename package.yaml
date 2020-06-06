@@ -24,7 +24,8 @@ dependencies:
 - servant
 # - servant-server
 - servant-flatten
-
+# test deps
+- hspec
 library:
   source-dirs: src
 
