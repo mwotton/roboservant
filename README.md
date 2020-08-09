@@ -60,6 +60,10 @@ type-indexed store.
 	- test complex permissions/ownership/delegation logic - should never be able to
 	  get access to something you don't own or haven't been delegated access to.
 
+- coverage
+  - if you run the checker for a while and `hpc` suggests you still have bad coverage,
+	your api is designed in a way that requires external manipulation and may be improvable.
+
 - benchmarking
   - we can generate "big-enough" call sequences, then save the database & a sample call for each
 	endpoint that takes long enough to be a reasonable test.
