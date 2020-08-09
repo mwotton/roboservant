@@ -21,9 +21,18 @@ description:         Please see the README on GitHub at <https://github.com/gith
 
 dependencies:
 - base >= 4.7 && < 5
-- servant
-# - servant-server
+
+- QuickCheck
+- bytestring
+- http-client
+- quickcheck-state-machine
+- servant >= 0.17
+- servant-client >= 0.17
 - servant-flatten
+- servant-server >= 0.17
+- string-conversions
+- http-media
+
 # test deps
 - hspec
 library:

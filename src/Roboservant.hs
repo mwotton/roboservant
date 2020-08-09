@@ -13,12 +13,16 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-
+{-# LANGUAGE FunctionalDependencies #-}
 module Roboservant where
 
 import Control.Applicative
 import GHC.TypeLits
 import Servant.API
+
+import Roboservant.ContextualGenRequest
+import Roboservant.StateMachine
+
 
 type family ExtractRespType (path :: *) :: * where
   ExtractRespType (_ :> b) = ExtractRespType b
