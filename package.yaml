@@ -22,19 +22,20 @@ description:         Please see the README on GitHub at <https://github.com/gith
 dependencies:
 - base >= 4.7 && < 5
 
-- QuickCheck
+
 - bytestring
 - http-client
+- http-media
+- QuickCheck
 - quickcheck-state-machine
 - servant >= 0.17
 - servant-client >= 0.17
 - servant-flatten
 - servant-server >= 0.17
 - string-conversions
-- http-media
-
 # test deps
 - hspec
+- QuickCheck
 library:
   source-dirs: src
 
