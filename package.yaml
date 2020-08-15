@@ -24,6 +24,8 @@ dependencies:
 
 
 - bytestring
+- hedgehog
+- containers
 - http-client
 - http-media
 - QuickCheck

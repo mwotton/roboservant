@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: e066fe1fb50c5d775ba730812d8afb9db9b9d14e08b2c25ca2277a1d7205d852
+-- hash: a191221847f306a37d41754b238e8ccc040f3279c30853f21542d4bdf5ab60d3
 
 name:           roboservant
 version:        0.1.0.0
@@ -29,6 +29,7 @@ library
   exposed-modules:
       Roboservant
       Roboservant.ContextualGenRequest
+      Roboservant.Hedgehog
       Roboservant.StateMachine
   other-modules:
       Paths_roboservant
@@ -38,6 +39,8 @@ library
       QuickCheck
     , base >=4.7 && <5
     , bytestring
+    , containers
+    , hedgehog
     , hspec
     , http-client
     , http-media
@@ -61,6 +64,8 @@ test-suite roboservant-test
       QuickCheck
     , base >=4.7 && <5
     , bytestring
+    , containers
+    , hedgehog
     , hspec
     , http-client
     , http-media
