@@ -12,6 +12,7 @@
 {-# LANGUAGE TupleSections              #-}
 module Roboservant.StateMachine where
 
+import Data.Maybe
 import Servant.Client
 import           Control.Arrow                      (second)
 import           Control.Monad.IO.Class
@@ -33,6 +34,7 @@ import           Data.Type.HasClass
 import           Data.Type.HasClassPreludeInstances
 import           Hedgehog
 import qualified Hedgehog.Gen                       as Gen
+import Control.Monad ((<=<))
 
 
 -- | can then use either `forAllParallelCommands` or `forAllCommands` to turn
@@ -62,27 +64,30 @@ import qualified Hedgehog.Gen                       as Gen
 
 
 newtype MyDyn = MyDyn (ConstrainedDynamic Show)
-  deriving Show
+--  deriving Show
 
-instance Eq MyDyn where
-  MyDyn a == MyDyn b = show a == show b
+-- instance Eq MyDyn where
+--   MyDyn a == MyDyn b = show a == show b
 
 data State v =
   State
   { stateRefs    :: Map TypeRep (NonEmpty (Var (Opaque (IORef MyDyn)) v))
   } deriving (Show)
 
-type ReifiedApi = [([TypeRep], TypeRep, MyDyn)]
+type ReifiedApi = [(ApiOffset, [TypeRep], TypeRep, MyDyn)]
 
--- newtype ApiOffset = ApiOffset Int
---   deriving (Eq,Show)
---   deriving newtype (Enum,Num)
-data Op (v :: * -> * ) = Op [(TypeRep, Var (Opaque MyDyn) v)]
+newtype ApiOffset = ApiOffset Int
+  deriving (Eq,Show)
+  deriving newtype (Enum,Num)
+
+-- | we need to specify an offset because it's entirely possible to have two
+--   functions with the same arguments that do different things.
+data Op (v :: * -> * ) = Op ApiOffset [(TypeRep, Var (Opaque (IORef MyDyn)) v)]
 
 deriving instance Show (Op Symbolic)
 
 instance HTraversable Op where
-  htraverse r op@(Op args) = Op <$> traverse (\(t,v) -> (t,) <$> htraverse r v )args
+  htraverse r op@(Op offset args) = Op offset <$> traverse (\(t,v) -> (t,) <$> htraverse r v )args
 
 callEndpoint :: (MonadGen n, MonadIO m) => ReifiedApi -> ClientEnv -> Command n m State
 callEndpoint staticRoutes env =
@@ -91,23 +96,46 @@ callEndpoint staticRoutes env =
     gen :: MonadGen n => State Symbolic -> Maybe (n (Op Symbolic))
     gen State{..}
       | any null options = Nothing
-      | otherwise = Just $ (mapM Gen.element options >>= pure . Op . _) -- fmap Op (mapM (_ <$> Gen.element) options)
+      | otherwise = Just $ do
+          uncurry Op <$> chooseOne options -- fmap Op (mapM (_ <$> Gen.element) options)
 
      where
-       options = map (\(args,typerep,_) -> map selectByType args) staticRoutes
-       -- | given a reified type sig for an operation, work out what
-       --   options there are for each
-       selectByType typerep = case Map.lookup typerep stateRefs of
-         Nothing -> []
-         Just xs -> fmap (typerep,) (NEL.toList xs)
+       chooseOne :: MonadGen n
+                 => [(ApiOffset,
+                     [(TypeRep, [Var (Opaque (IORef MyDyn)) Symbolic])])]
+                 -> n (ApiOffset,
+                      [(TypeRep, Var (Opaque (IORef MyDyn)) Symbolic)])
+       chooseOne opts = do
+         (offset, args) <- Gen.element opts
+         (offset,) <$> mapM (\(tr,argOpts) -> (tr,) <$> Gen.element argOpts) args
 
 
-    execute (Op args) =
-      fmap Opaque . liftIO $ undefined -- case fromDynamic
+       -- | the options for each argument, in order of the parameters to the call.
+       options :: [(ApiOffset, [(TypeRep, [Var (Opaque (IORef MyDyn)) Symbolic])])]
+       options = mapMaybe (\(offset, argreps, retType, dynCall) ->(offset,) <$> do
+                              mapM (\x -> (x,) <$> fillableWith x) argreps
+                              )
+                 staticRoutes
 
-  in  Command gen execute [ Update $ undefined
-                           -- , Ensure (no-500 here)
-                          ]
+       fillableWith :: TypeRep -> Maybe [Var (Opaque (IORef MyDyn)) Symbolic]
+       fillableWith tr = NEL.toList <$> Map.lookup tr stateRefs
+
+    execute :: (Typeable a, MonadIO m) => (Op v -> m (Opaque a))
+    execute (Op (ApiOffset offset) args) =
+      fmap Opaque . liftIO $ do
+        let endpoint = staticRoutes !! offset
+
+        undefined -- case fromDynamic
+
+  in   Command gen execute
+       [ Update $ \s@State{..} (Op (ApiOffset offset) args) o  ->
+           State $ Map.update (Just . (pure o <>))
+             ((\(_,_,tr,_) -> tr) $ staticRoutes !! offset) stateRefs
+
+         -- , Ensure (no-500 here)
+       ]
+
+
 
 
   --     -- [
