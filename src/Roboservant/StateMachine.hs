@@ -28,13 +28,13 @@ import           Servant.Server                     (Server)
 
 import qualified Data.List.NonEmpty as NEL
 import Data.List.NonEmpty(NonEmpty)
-import           Data.ConstrainedDynamic
-import qualified Data.MultiConstrainedDynamic       as MCD
+import           Data.Dynamic
 import           Data.Type.HasClass
 import           Data.Type.HasClassPreludeInstances
 import           Hedgehog
 import qualified Hedgehog.Gen                       as Gen
 import Control.Monad ((<=<))
+import GHC.IORef (readIORef)
 
 
 -- | can then use either `forAllParallelCommands` or `forAllCommands` to turn
@@ -63,7 +63,7 @@ import Control.Monad ((<=<))
 --   | Incremented
 
 
-newtype MyDyn = MyDyn (ConstrainedDynamic Show)
+type MyDyn = Dynamic
 --  deriving Show
 
 -- instance Eq MyDyn where
@@ -72,7 +72,8 @@ newtype MyDyn = MyDyn (ConstrainedDynamic Show)
 data State v =
   State
   { stateRefs    :: Map TypeRep (NonEmpty (Var (Opaque (IORef MyDyn)) v))
-  } deriving (Show)
+  , client :: ClientEnv
+  }
 
 type ReifiedApi = [(ApiOffset, [TypeRep], TypeRep, MyDyn)]
 
@@ -120,26 +121,25 @@ callEndpoint staticRoutes env =
        fillableWith :: TypeRep -> Maybe [Var (Opaque (IORef MyDyn)) Symbolic]
        fillableWith tr = NEL.toList <$> Map.lookup tr stateRefs
 
-    execute :: (Typeable a, MonadIO m) => (Op v -> m (Opaque a))
+    execute :: (Typeable a, MonadIO m)
+            => Op Concrete -> m (Opaque a)
     execute (Op (ApiOffset offset) args) =
       fmap Opaque . liftIO $ do
-        let endpoint = staticRoutes !! offset
+        realArgs <- mapM (\(tr,v) -> readIORef (opaque v) ) args
+        let (_offset, staticArgs,ret, endpoint) = staticRoutes !! offset
+          -- now, magic happens: we apply some dynamic arguments to a dynamic
+          -- function and hopefully somtehing useful pops out the end.
+            func = foldr ( \arg curr ->  dynApply arg =<< curr  ) (Just endpoint) realArgs
+        case func >>= fromDynamic of
+          Nothing -> error "all screwed up"
+          Just f -> runClientM f env >>= either (error . show) (pure . toDyn)
 
         undefined -- case fromDynamic
 
   in   Command gen execute
        [ Update $ \s@State{..} (Op (ApiOffset offset) args) o  ->
-           State $ Map.update (Just . (pure o <>))
-             ((\(_,_,tr,_) -> tr) $ staticRoutes !! offset) stateRefs
-
+           s { stateRefs = Map.update (Just . (pure o <>))
+               ((\(_,_,tr,_) -> tr) $ staticRoutes !! offset) stateRefs
+             }
          -- , Ensure (no-500 here)
        ]
-
-
-
-
-  --     -- [
---     --     Update $ \(State xs) _i o ->
---     --       State $
---     --         xs ++ [(o, 0)]
---     --   ]
