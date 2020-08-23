@@ -25,11 +25,12 @@ dependencies:
 
 - bytestring
 - hedgehog
+- constrained-dynamic
 - containers
 - http-client
 - http-media
 - QuickCheck
-- quickcheck-state-machine
+- quickcheck-state-machine >= 0.7
 - servant >= 0.17
 - servant-client >= 0.17
 - servant-flatten

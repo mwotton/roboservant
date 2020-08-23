@@ -35,10 +35,12 @@ import           Servant.API
 import           Servant.API.ContentTypes (AllMimeRender, allMimeRender)
 import           Servant.Client
 -- import           Test.QuickCheck          (Arbitrary, Gen, elements, frequency)
-import           Data.Dynamic             (Dynamic)
+
+import           Data.Dynamic             (Dynamic, fromDynamic)
 import           Data.Map.Strict          (Map)
+import qualified Data.Map.Strict          as Map
 import           Data.Maybe
-import           Data.Typeable            (TypeRep)
+import           Data.Typeable            (TypeRep, Typeable, typeRep)
 import           Hedgehog
 import qualified Hedgehog.Gen             as Gen
 import           Roboservant.Hedgehog
@@ -67,6 +69,14 @@ instance ( HasContextualGenRequest a
 
 withGeneratable p store cont = cont <$> genContextualRequest p store
 
+getCandidates p st cont =
+  case Map.lookup (typeRep p) st of
+    Nothing -> (0,error "shouldn't ever be invoked")
+    Just x  -> do
+      case fromDynamic x of
+        Nothing         -> (0,error "shouldn't ever be invoked")
+        Just candidates -> cont candidates
+
 instance (KnownSymbol path, HasContextualGenRequest b )
   => HasContextualGenRequest (path :> b) where
     genContextualRequest _ store =
@@ -81,42 +91,48 @@ instance (KnownSymbol path, HasContextualGenRequest b )
               in r { path = "/" <> BS.intercalate "/" paths }
 
           )
---        , pure ( \burl -> do
---            _
-        -- fmap (Just . (1,)) $ return $ \burl st ->
       where
         -- (oldf, old) = genContextualRequest  (Proxy :: Proxy b) store
         new = cs $ symbolVal (Proxy :: Proxy path)
 
--- instance HasContextualGenRequest EmptyAPI st where
---   genContextualRequest _ = (0, error "EmptyAPIs cannot be queried.")
+instance HasContextualGenRequest EmptyAPI where
+  genContextualRequest _ _ = Nothing
 
--- instance HasContextualGenRequest api st => HasContextualGenRequest (Summary d :> api) st where
---   genContextualRequest _ = genContextualRequest (Proxy :: Proxy api)
+instance HasContextualGenRequest api => HasContextualGenRequest (Summary d :> api) where
+  genContextualRequest _ = genContextualRequest (Proxy :: Proxy api)
 
--- instance HasContextualGenRequest api st => HasContextualGenRequest (Description d :> api) st where
---   genContextualRequest _ = genContextualRequest (Proxy :: Proxy api)
+instance HasContextualGenRequest api => HasContextualGenRequest (Description d :> api) where
+  genContextualRequest _ = genContextualRequest (Proxy :: Proxy api)
 
--- instance (HasContextualGenRequest b st, ToHttpApiData c )
---     => HasContextualGenRequest (Capture' mods x c :> b) st where
---     genContextualRequest _ = (oldf, do
---       old' <- old
---       new' <- toUrlPiece <$> _generator
---       return $ \burl st -> let r = old' burl st in r { path = cs new' <> path r })
---       where
---         (oldf, old) = genContextualRequest (Proxy :: Proxy b)
+instance (HasContextualGenRequest b, Typeable c, ToHttpApiData c )
+    => HasContextualGenRequest (Capture' mods x c :> b) where
+    genContextualRequest _ st = withGeneratable (Proxy :: Proxy b) st $ \(oldf,old) ->
+      getCandidates (Proxy :: Proxy c) st $ \candidates ->
+      (oldf
+      ,do
+         piece :: c <- Gen.choice candidates
+         old' <- old
+         pure $ \burl ->
+           let r = old' burl
+           in r  { path = cs (toUrlPiece piece) <> path r })
 
--- instance (HasContextualGenRequest b st, ToHttpApiData c )
---     => HasContextualGenRequest (CaptureAll x c :> b) st where
---     genContextualRequest _ = (oldf, do
---       old' <- old
---       new' <- fmap (cs . toUrlPiece) <$> new
---       let new'' = BS.intercalate "/" new'
---       return $ \burl st -> let r = old' burl st
---         in r { path = new'' <> path r })
---       where
---         (oldf, old) = genContextualRequest (Proxy :: Proxy b)
---         new = _arbitrary  :: Gen [c]
+-- unsure how CaptureAll works, finish later.
+-- instance (HasContextualGenRequest b, ToHttpApiData c, Typeable c )
+--     => HasContextualGenRequest (CaptureAll x c :> b) where
+--     genContextualRequest _ st = withGeneratable (Proxy :: Proxy b) st $ \(oldf,old) ->
+--       getCandidates (Proxy :: Proxy c) st $ \candidates ->
+--         (oldf, do
+--           old' <- old
+--           piece :: c <- Gen.choice candidates
+--           let new'' = BS.intercalate "/" . fmap (cs . toUrlPiece) $ piece
+
+
+
+--           return $ \burl -> let r = old' burl
+--             in r { path = new'' <> path r })
+
+--             -- (oldf, old) = genContextualRequest (Proxy :: Proxy b)
+--             -- new = _arbitrary  :: Gen [c]
 
 -- instance (KnownSymbol h, HasContextualGenRequest b st, ToHttpApiData c)
 --     => HasContextualGenRequest (Header' mods h c :> b) st where
