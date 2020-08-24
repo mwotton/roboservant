@@ -39,6 +39,9 @@ dependencies:
 # test deps
 - hspec
 - QuickCheck
+- warp
+- aeson
+- wai
 library:
   source-dirs: src
 
