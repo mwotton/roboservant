@@ -34,7 +34,7 @@ import Control.Monad ((<=<))
 import Control.Monad.IO.Class
 import Data.Aeson
 import Data.Dynamic
-import Data.IORef (IORef)
+import Data.IORef (IORef, newIORef)
 import qualified Data.List.NonEmpty as NEL
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict (Map)
@@ -43,7 +43,7 @@ import Data.Maybe
 import Data.Type.HasClass
 import Data.Type.HasClassPreludeInstances
 import Data.Typeable (TypeRep, Typeable, typeOf, typeRep)
-import Debug.Trace (traceM)
+import Debug.Trace (traceM, traceShowM)
 import GHC.Generics (Generic)
 import GHC.Generics
 import GHC.IORef (readIORef)
@@ -142,33 +142,38 @@ callEndpoint staticRoutes =
       execute ::
         (MonadIO m) =>
         Op Concrete ->
-        m (Opaque Dynamic)
+        m (Opaque (IORef Dynamic))
       execute (Op (ApiOffset offset) args) = do
-        traceM (show (offset, args))
+        --        traceM (show (offset, args))
         fmap Opaque . liftIO $ do
           realArgs <- mapM (\(tr, v) -> readIORef (opaque v)) args
           let (_offset, staticArgs, ret, endpoint) = staticRoutes !! offset
               -- now, magic happens: we apply some dynamic arguments to a dynamic
               -- function and hopefully somtehing useful pops out the end.
-              func = foldr (\arg curr -> dynApply arg =<< curr) (Just endpoint) realArgs
-          case func >>= fromDynamic of
-            Nothing -> error ("all screwed up: " <> maybe "nothing" (show . dynTypeRep) func)
-            Just (f :: IO Dynamic) -> liftIO f -- >>= either (const $ error "blah") pure
+              func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just endpoint) realArgs
+          let showable = map dynTypeRep (endpoint : realArgs)
+          case func of
+            Nothing -> error ("all screwed up: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
+            Just (f') -> do
+              case fromDynamic f' of
+                Nothing -> error "failed on casting final function"
+                Just f -> liftIO f >>= newIORef -- >>= either (const $ error "blah") pure
    in Command
         gen
         execute
         [ Update $ \s@State {..} (Op (ApiOffset offset) args) o' ->
-            let foo :: Var (Opaque Dynamic) v -> Var (Opaque (IORef Dynamic)) v
-                foo = error "oops"
-             in s
-                  { stateRefs =
-                      let (_, _, tr, _) = staticRoutes !! offset
-                       in Map.insertWith
-                            (<>)
-                            tr
-                            (pure $ foo o')
-                            stateRefs
-                  }
+            --            let foo :: Var (Opaque Dynamic) v -> Var (Opaque (IORef Dynamic)) v
+            --                foo = _ . opaque
+            --             in
+            s
+              { stateRefs =
+                  let (_, _, tr, _) = staticRoutes !! offset
+                   in Map.insertWith
+                        (<>)
+                        tr
+                        (pure o')
+                        stateRefs
+              }
           -- , Ensure (no-500 here)
         ]
 
@@ -204,7 +209,7 @@ combine = (\(Foo a) (Foo b) -> pure (Foo (a + b)))
 eliminate =
   ( \(Foo a) ->
       if a > 10
-        then error "fuck"
+        then error "eliminate blew up, oh no!"
         else pure ()
   )
 
@@ -235,10 +240,12 @@ tests = do
     let clientEnv = mkClientEnv manager burl
         -- faking this out for now.
         footype = typeOf Foo
+        handleError :: forall a b m. Applicative m => (Either b a) -> m a
+        handleError = either (error "oopsie") pure
         reifiedApi =
-          [ (ApiOffset 0, [], footype, toDyn $ toDyn <$> runClientM introC clientEnv),
-            (ApiOffset 1, [footype, footype], footype, toDyn $ \f1 f2 -> toDyn <$> runClientM (combineC f1 f2) clientEnv),
-            (ApiOffset 2, [footype], (typeOf ()), toDyn $ \f -> toDyn <$> runClientM (eliminateC f) clientEnv)
+          [ (ApiOffset 0, [], footype, toDyn $ toDyn <$> (runClientM introC clientEnv >>= handleError)),
+            (ApiOffset 1, [footype, footype], footype, toDyn $ \f1 f2 -> toDyn <$> (runClientM (combineC f1 f2) clientEnv >>= handleError)),
+            (ApiOffset 2, [footype], (typeOf ()), toDyn $ \f -> toDyn <$> (runClientM (eliminateC f) clientEnv >>= handleError))
           ]
     -- type ReifiedApi = [(ApiOffset, [TypeRep], TypeRep, Dynamic)]
     checkParallel $ Group "props" [("aprop", prop_sm_sequential reifiedApi)]
