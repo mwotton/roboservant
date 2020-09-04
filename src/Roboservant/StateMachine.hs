@@ -240,8 +240,8 @@ tests = do
     let clientEnv = mkClientEnv manager burl
         -- faking this out for now.
         footype = typeOf Foo
-        handleError :: forall a b m. Applicative m => (Either b a) -> m a
-        handleError = either (error "oopsie") pure
+        handleError :: forall a b m. (Show b, Applicative m) => (Either b a) -> m a
+        handleError = either (error . show) pure
         reifiedApi =
           [ (ApiOffset 0, [], footype, toDyn $ toDyn <$> (runClientM introC clientEnv >>= handleError)),
             (ApiOffset 1, [footype, footype], footype, toDyn $ \f1 f2 -> toDyn <$> (runClientM (combineC f1 f2) clientEnv >>= handleError)),
