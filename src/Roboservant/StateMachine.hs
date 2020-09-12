@@ -1,3 +1,9 @@
+{-# LANGUAGE UndecidableInstances #-}
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DeriveAnyClass #-}
@@ -29,6 +35,10 @@ import Control.Arrow (second)
 --import           Test.QuickCheck                  (Property)
 -- import           Test.StateMachine
 
+import Type.Reflection (SomeTypeRep)
+import Servant.API.Flatten (Flat)
+import GHC.TypeLits (Nat, Symbol)
+import Data.Function ((&))
 import Control.Concurrent (forkIO)
 import Control.Monad ((<=<))
 import Control.Monad.IO.Class
@@ -47,6 +57,7 @@ import Debug.Trace (traceM, traceShowM)
 import GHC.Generics (Generic)
 import GHC.Generics
 import GHC.IORef (readIORef)
+import Control.Monad.Except (runExceptT)
 import Hedgehog
 import Hedgehog
 import qualified Hedgehog.Gen as Gen
@@ -94,7 +105,94 @@ data State v
       { stateRefs :: Map TypeRep (NonEmpty (Var (Opaque (IORef Dynamic)) v))
       }
 
+class FlattenServer api where
+  flattenServer :: Server api -> Bundled (Endpoints api)
+
+instance
+  ( Endpoints (endpoint :<|> api) ~ (endpoint ': Endpoints api)
+  , Server (endpoint :<|> api) ~ (Server endpoint :<|> Server api)
+  , FlattenServer api
+  ) => FlattenServer (endpoint :<|> api) where
+  flattenServer (endpoint :<|> server) = endpoint `AnEndpoint` flattenServer @api server
+
+instance
+  ( HasServer (x :> api) '[]
+  , Endpoints (x :> api) ~ '[x :> api]
+  ) => FlattenServer (x :> api) where
+  flattenServer server = server `AnEndpoint` NoEndpoints
+
+instance
+  ( HasServer (Verb method statusCode contentTypes responseType) '[],
+    Endpoints (Verb method statusCode contentTypes responseType) ~ '[Verb method statusCode contentTypes responseType]
+  ) => FlattenServer (Verb method statusCode contentTypes responseType) where
+  flattenServer server = server `AnEndpoint` NoEndpoints
+  
+type ReifiedEndpoint = ([TypeRep], TypeRep, Dynamic)
+
 type ReifiedApi = [(ApiOffset, [TypeRep], TypeRep, Dynamic)]
+
+data Bundled endpoints where
+  AnEndpoint :: Server endpoint -> Bundled endpoints -> Bundled (endpoint ': endpoints)
+  NoEndpoints :: Bundled '[]
+
+class ToReifiedApi (endpoints :: [*]) where
+  toReifiedApi :: Bundled endpoints -> Proxy endpoints -> ReifiedApi
+
+class ToReifiedEndpoint (endpoint :: *) where
+  toReifiedEndpoint :: Dynamic -> Proxy endpoint -> ReifiedEndpoint
+
+instance ToReifiedApi '[] where
+  toReifiedApi NoEndpoints _ = []
+
+instance (Typeable (Normal (ServerT endpoint Handler)), NormalizeFunction (ServerT endpoint Handler), ToReifiedEndpoint endpoint, ToReifiedApi endpoints, Typeable (ServerT endpoint Handler))
+  => ToReifiedApi (endpoint : endpoints)
+  where
+    toReifiedApi (endpoint `AnEndpoint` endpoints) _ =
+      withOffset (toReifiedEndpoint (toDyn (normalize endpoint)) (Proxy @endpoint))
+        : map (\(n, x, y, z) -> (n + 1, x, y, z))
+            (toReifiedApi endpoints (Proxy @endpoints))
+      where
+        withOffset (x, y, z) = (0, x, y, z)
+
+class NormalizeFunction m where
+  type Normal m 
+  normalize :: m -> Normal m
+
+instance NormalizeFunction x => NormalizeFunction (r -> x) where
+  type Normal (r -> x) = r -> Normal x
+  normalize = fmap normalize
+
+instance Typeable x => NormalizeFunction (Handler x) where
+  type Normal (Handler x) = IO (Either ServerError (TypeRep, Dynamic))
+  normalize handler = (runExceptT . runHandler') handler >>= \case
+    Left serverError -> pure (Left serverError)
+    Right x -> pure (Right (typeRep (Proxy @x), toDyn x))
+    
+instance Typeable responseType
+  => ToReifiedEndpoint (Verb method statusCode contentTypes responseType)
+  where
+    toReifiedEndpoint endpoint _ =
+      ([], typeRep (Proxy @responseType), endpoint)
+
+instance (ToReifiedEndpoint endpoint)
+  => ToReifiedEndpoint ((x :: Symbol) :> endpoint)
+  where
+    toReifiedEndpoint endpoint _ =
+      toReifiedEndpoint endpoint (Proxy @endpoint) 
+
+instance (Typeable requestType, ToReifiedEndpoint endpoint)
+  => ToReifiedEndpoint (Capture name requestType :> endpoint)
+  where
+    toReifiedEndpoint endpoint _ =
+      toReifiedEndpoint endpoint (Proxy @endpoint) 
+        & \(args, result, typeRepMap) -> (typeRep (Proxy @requestType) : args, result, typeRepMap)
+
+instance (Typeable requestType, ToReifiedEndpoint endpoint)
+  => ToReifiedEndpoint (ReqBody contentTypes requestType :> endpoint)
+  where
+    toReifiedEndpoint endpoint _ =
+      toReifiedEndpoint endpoint (Proxy @endpoint) 
+        & \(args, result, typeRepMap) -> (typeRep (Proxy @requestType) : args, result, typeRepMap)
 
 newtype ApiOffset = ApiOffset Int
   deriving (Eq, Show)
@@ -156,8 +254,10 @@ callEndpoint staticRoutes =
             Nothing -> error ("all screwed up: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
             Just (f') -> do
               case fromDynamic f' of
-                Nothing -> error "failed on casting final function"
-                Just f -> liftIO f >>= newIORef -- >>= either (const $ error "blah") pure
+                Nothing -> error ("all screwed up: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
+                Just f -> liftIO f >>= \case
+                  Left (serverError :: ServerError) -> error (show serverError)
+                  Right (typeRep :: SomeTypeRep, (dyn :: Dynamic)) -> newIORef dyn
    in Command
         gen
         execute
@@ -190,7 +290,7 @@ prop_sm_sequential reifiedApi = do
     executeSequential initialState actions
 
 newtype Foo = Foo Int
-  deriving (Generic, Eq, Show)
+  deriving (Generic, Eq, Show, Typeable)
   deriving newtype (FromHttpApiData, ToHttpApiData)
 
 instance ToJSON Foo
@@ -219,6 +319,9 @@ fooServer =
     :<|> combine
     :<|> eliminate
 
+bundledFooServer :: Bundled (Endpoints FooApi)
+bundledFooServer = flattenServer @FooApi fooServer
+
 runServer :: IO ()
 runServer = do
   let port = 3000
@@ -235,44 +338,5 @@ introC :<|> combineC :<|> eliminateC = Servant.Client.client fooApi
 
 tests :: IO Bool
 tests = do
-  withServantServer fooApi (pure fooServer) $ \burl -> do
-    manager <- newManager defaultManagerSettings
-    let clientEnv = mkClientEnv manager burl
-        -- faking this out for now.
-        footype = typeOf Foo
-        handleError :: forall a b m. (Show b, Applicative m) => (Either b a) -> m a
-        handleError = either (error . show) pure
-        reifiedApi =
-          [ (ApiOffset 0, [], footype, toDyn $ toDyn <$> (runClientM introC clientEnv >>= handleError)),
-            (ApiOffset 1, [footype, footype], footype, toDyn $ \f1 f2 -> toDyn <$> (runClientM (combineC f1 f2) clientEnv >>= handleError)),
-            (ApiOffset 2, [footype], (typeOf ()), toDyn $ \f -> toDyn <$> (runClientM (eliminateC f) clientEnv >>= handleError))
-          ]
-    -- type ReifiedApi = [(ApiOffset, [TypeRep], TypeRep, Dynamic)]
-    checkParallel $ Group "props" [("aprop", prop_sm_sequential reifiedApi)]
-
--- | Start a servant application on an open port, run the provided function,
--- then stop the application.
---
--- /Since 0.0.0.0/
-withServantServer ::
-  HasServer a '[] =>
-  Proxy a ->
-  IO (Server a) ->
-  (BaseUrl -> IO r) ->
-  IO r
-withServantServer api = withServantServerAndContext api EmptyContext
-
--- | Like 'withServantServer', but allows passing in a 'Context' to the
--- application.
---
--- /Since 0.0.0.0/
-withServantServerAndContext ::
-  (HasServer a ctx) =>
-  Proxy a ->
-  Context ctx ->
-  IO (Server a) ->
-  (BaseUrl -> IO r) ->
-  IO r
-withServantServerAndContext api ctx server t =
-  withApplication (return . serveWithContext api ctx =<< server) $ \port ->
-    t (BaseUrl Http "localhost" port "")
+  let reifiedApi = toReifiedApi (flattenServer @FooApi fooServer) (Proxy @(Endpoints FooApi))
+  checkParallel $ Group "props" [("aprop", prop_sm_sequential reifiedApi)]

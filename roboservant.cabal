@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.31.2.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: bc1746c1053b1f6bf66cc30046bb205fefd129303feff615f0d885999eace809
+-- hash: 9d15f4554f9f8ea8913a6766643b63ee6633016374fc98164e81058799204a87
 
 name:           roboservant
 version:        0.1.0.0
@@ -46,6 +46,7 @@ library
     , hspec
     , http-client
     , http-media
+    , mtl
     , quickcheck-state-machine >=0.7
     , servant >=0.17
     , servant-client >=0.17
@@ -75,6 +76,7 @@ test-suite roboservant-test
     , hspec
     , http-client
     , http-media
+    , mtl
     , quickcheck-state-machine >=0.7
     , roboservant
     , servant >=0.17
