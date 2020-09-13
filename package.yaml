@@ -7,7 +7,7 @@ maintainer:          "mwotton@gmail.com"
 copyright:           "2020 Mark Wotton, Samuel Schlesinger"
 synopsis:            Automatic session-aware servant testing
 category:            Web
-description:         Please see the README on GitHub at <https://github.com/githubuser/roboservant#readme>
+description:         Please see the README on GitHub at <https://github.com/mwotton/roboservant#readme>
 
 extra-source-files:
 - README.md
