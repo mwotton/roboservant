@@ -1,11 +1,9 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
 
-import Data.Proxy (Proxy (..))
 import qualified Foo
 import Hedgehog (Group (..), checkSequential)
 import qualified Roboservant as RS
-import Servant (Endpoints)
 import qualified UnsafeIO
 
 -- | this is pretty bad. hopefully Jacob knows a better way of doing this.
