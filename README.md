@@ -4,40 +4,54 @@ Automatically fuzz your servant apis in a contextually-aware way.
 
 ![CI](https://github.com/mwotton/roboservant/workflows/CI/badge.svg)
 
+
 # why?
 
 Servant gives us a lot of information about what a server can do. We
 use this information to generate arbitrarily long request/response
 sessions and verify properties that should hold over them.
 
+# example
+
+Our api under test:
+
+```
+newtype Foo = Foo Int
+  deriving (Generic, Eq, Show, Typeable)
+  deriving newtype (FromHttpApiData, ToHttpApiData)
+
+type FooApi =
+  "item" :> Get '[JSON] Foo
+    :<|> "itemAdd" :> Capture "one" Foo :> Capture "two" Foo :> Get '[JSON] Foo
+    :<|> "item" :> Capture "itemId" Foo :> Get '[JSON] ()
+```
+
+From the tests:
+
+```
+  let reifiedApi = RS.toReifiedApi (RS.flattenServer @Foo.FooApi Foo.fooServer) (Proxy @(Endpoints Foo.FooApi))
+  assert "should find an error in Foo" . not
+    =<< checkSequential (Group "Foo" [("Foo", RS.prop_sequential reifiedApi)])
+```
+
+We have a server that blows up if the value of the int in a `Foo` ever gets above 10. Note:
+there is no generator for `Foo` types: larger `Foo`s can only be made only by combining existing
+`Foo`s with `itemAdd`. This is an important distinction, because many APIs will return UUIDs or
+similar as keys, which make it impossible to cover a useful section of the state space without
+using the values returned by the API
+
+
 # why not servant-quickcheck?
 
 [servant-quickcheck](https://hackage.haskell.org/package/servant-quickcheck)
-is a great package and I've learned a lot from it. Unfortunately,
-there's a lot of the state space it can't explore: modern webapps are
+is a great package and I've learned a lot from it. Unfortunately, as mentioned previously,
+there's a lot of the state space you just can't explore without context: modern webapps are
 full of pointer-like structures, whether they're URLs or database
-keys/uuids. servant-quickcheck demands that you be able to generate
-these without context via Arbitrary: good luck exploring an API that
-requires you to generate just the right UUID to hit non-trivial code.
+keys/uuids, and servant-quickcheck requires that you be able to generate
+these without context via Arbitrary.
 
-roboservant avoids this by using
-[quickcheck-state-machine](https://github.com/advancedtelematic/quickcheck-state-machine#readme),
-which models the dynamic state in such a way that we can use results
-of previous calls.
+## extensions/todo
 
-# concept
-
-we start with a servant api and a server that fulfills the type.
-
-From that api, we should be able to summon up an empty type-indexed store with a key
-for each response type in the API.
-
-We can then look at each callable endpoint, and eliminate any that require values that are
-empty in the type-indexed store. this allows a generative process where we can extend a sequence
-of calls indefinitely, by making a call to the concrete server and recording the result in the
-type-indexed store.
-
-## extensions
 - add some "starter" values to the store
   - there may be a JWT that's established outside the servant app, for instance.
 - `class Extras a where extras :: Gen [a]`
@@ -51,14 +65,14 @@ type-indexed store.
 	- and an endpoint `bar` that takes a `Bar`
   - I should be able to call `foo` to get a `Foo`, and if it happens to be an `FBar Bar`, I
 	should be able to use that `Bar` to call `bar`.
-
-## applications
-- testing
-  - some properties should always hold (no 500s)
-  - there may be some other properties that hold contextually
+- better handling of properties to be verified
+  - some properties should always hold (no 500s): this already works.
+  - to-do: there may be some other properties that hold contextually
 	- healthcheck should be 200
 	- test complex permissions/ownership/delegation logic - should never be able to
 	  get access to something you don't own or haven't been delegated access to.
+
+## other possible applications
 
 - coverage
   - if you run the checker for a while and `hpc` suggests you still have bad coverage,
