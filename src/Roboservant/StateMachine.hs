@@ -16,7 +16,10 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
-module Roboservant.StateMachine where
+module Roboservant.StateMachine
+( prop_sequential
+, prop_concurrent
+) where
 
 import Control.Monad.Except (runExceptT)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -223,8 +226,9 @@ callEndpoint staticRoutes =
           -- , Ensure (no-500 here)
         ]
 
-prop_sequential :: ReifiedApi -> Property
-prop_sequential reifiedApi = do
+prop_sequential :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api)) => Server api -> Property
+prop_sequential server = do
+  let reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
   property $ do
     let initialState = State mempty
     actions <-
@@ -235,8 +239,9 @@ prop_sequential reifiedApi = do
           [callEndpoint reifiedApi]
     executeSequential initialState actions
 
-prop_concurrent :: ReifiedApi -> Property
-prop_concurrent reifiedApi =
+prop_concurrent :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api)) => Server api -> Property
+prop_concurrent server =
+  let reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api)) in
   let initialState = State mempty
    in withTests 1000 . withRetries 10 . property $ do
         actions <-

@@ -4,12 +4,12 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 51154f1c866aea92673a52985de6810cebda3b2662fddd7b7f88a56725e30041
+-- hash: 83f44d7e193afdbe2e62584983f73420b90328cbc0ea01f626d16313091641cf
 
 name:           roboservant
 version:        0.1.0.0
 synopsis:       Automatic session-aware servant testing
-description:    Please see the README on GitHub at <https://github.com/githubuser/roboservant#readme>
+description:    Please see the README on GitHub at <https://github.com/mwotton/roboservant#readme>
 category:       Web
 homepage:       https://github.com/mwotton/roboservant#readme
 bug-reports:    https://github.com/mwotton/roboservant/issues

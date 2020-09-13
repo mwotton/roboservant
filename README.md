@@ -29,9 +29,8 @@ type FooApi =
 From the tests:
 
 ```
-  let reifiedApi = RS.toReifiedApi (RS.flattenServer @Foo.FooApi Foo.fooServer) (Proxy @(Endpoints Foo.FooApi))
   assert "should find an error in Foo" . not
-    =<< checkSequential (Group "Foo" [("Foo", RS.prop_sequential reifiedApi)])
+    =<< checkSequential (Group "Foo" [("Foo", RS.prop_sequential @Foo.FooApi Foo.fooServer)])
 ```
 
 We have a server that blows up if the value of the int in a `Foo` ever gets above 10. Note:
