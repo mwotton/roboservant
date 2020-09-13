@@ -24,10 +24,14 @@ dependencies:
 
 
 - bytestring
+- hedgehog
+- constrained-dynamic
+- containers
 - http-client
 - http-media
 - QuickCheck
-- quickcheck-state-machine
+- quickcheck-state-machine >= 0.7
+- mtl
 - servant >= 0.17
 - servant-client >= 0.17
 - servant-flatten
@@ -36,6 +40,9 @@ dependencies:
 # test deps
 - hspec
 - QuickCheck
+- warp
+- aeson
+- wai
 library:
   source-dirs: src
 

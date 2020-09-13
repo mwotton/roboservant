@@ -17,6 +17,7 @@
 import           Roboservant
 import           Servant.API
 import           Test.Hspec
+import qualified Roboservant.StateMachine as SM
 
 newtype Foo = Foo Int
   deriving (Show)
@@ -48,4 +49,4 @@ test' = blah
 storeOfOurApi = storeOfApi @Api
 
 main :: IO ()
-main = putStrLn "Test suite not yet implemented"
+main = SM.tests  >>= print
