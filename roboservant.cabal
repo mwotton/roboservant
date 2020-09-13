@@ -1,19 +1,21 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 9d15f4554f9f8ea8913a6766643b63ee6633016374fc98164e81058799204a87
+-- hash: 51154f1c866aea92673a52985de6810cebda3b2662fddd7b7f88a56725e30041
 
 name:           roboservant
 version:        0.1.0.0
+synopsis:       Automatic session-aware servant testing
 description:    Please see the README on GitHub at <https://github.com/githubuser/roboservant#readme>
-homepage:       https://github.com/githubuser/roboservant#readme
-bug-reports:    https://github.com/githubuser/roboservant/issues
-author:         Author name here
-maintainer:     example@example.com
-copyright:      2020 Author name here
+category:       Web
+homepage:       https://github.com/mwotton/roboservant#readme
+bug-reports:    https://github.com/mwotton/roboservant/issues
+author:         Mark Wotton, Samuel Schlesinger
+maintainer:     mwotton@gmail.com
+copyright:      2020 Mark Wotton, Samuel Schlesinger
 license:        BSD3
 license-file:   LICENSE
 build-type:     Simple
@@ -23,24 +25,22 @@ extra-source-files:
 
 source-repository head
   type: git
-  location: https://github.com/githubuser/roboservant
+  location: https://github.com/mwotton/roboservant
 
 library
   exposed-modules:
       Roboservant
-      Roboservant.ContextualGenRequest
-      Roboservant.Hedgehog
       Roboservant.StateMachine
   other-modules:
       Paths_roboservant
   hs-source-dirs:
       src
+  ghc-options: -Wall
   build-depends:
       QuickCheck
     , aeson
     , base >=4.7 && <5
     , bytestring
-    , constrained-dynamic
     , containers
     , hedgehog
     , hspec
@@ -53,24 +53,23 @@ library
     , servant-flatten
     , servant-server >=0.17
     , string-conversions
-    , wai
-    , warp
   default-language: Haskell2010
 
 test-suite roboservant-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Foo
+      UnsafeIO
       Paths_roboservant
   hs-source-dirs:
       test
-  ghc-options: -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       QuickCheck
     , aeson
     , base >=4.7 && <5
     , bytestring
-    , constrained-dynamic
     , containers
     , hedgehog
     , hspec
@@ -84,6 +83,4 @@ test-suite roboservant-test
     , servant-flatten
     , servant-server >=0.17
     , string-conversions
-    , wai
-    , warp
   default-language: Haskell2010

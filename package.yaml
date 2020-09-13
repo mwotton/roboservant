@@ -1,48 +1,42 @@
 name:                roboservant
 version:             0.1.0.0
-github:              "githubuser/roboservant"
+github:              "mwotton/roboservant"
 license:             BSD3
-author:              "Author name here"
-maintainer:          "example@example.com"
-copyright:           "2020 Author name here"
+author:              "Mark Wotton, Samuel Schlesinger"
+maintainer:          "mwotton@gmail.com"
+copyright:           "2020 Mark Wotton, Samuel Schlesinger"
+synopsis:            Automatic session-aware servant testing
+category:            Web
+description:         Please see the README on GitHub at <https://github.com/githubuser/roboservant#readme>
 
 extra-source-files:
 - README.md
 - ChangeLog.md
 
-# Metadata used when publishing your package
-# synopsis:            Short description of your package
-# category:            Web
-
-# To avoid duplicated efforts in documentation and dealing with the
-# complications of embedding Haddock markup inside cabal files, it is
-# common to point users to the README.md file.
-description:         Please see the README on GitHub at <https://github.com/githubuser/roboservant#readme>
-
 dependencies:
 - base >= 4.7 && < 5
 
-
+- QuickCheck
 - bytestring
-- hedgehog
-- constrained-dynamic
 - containers
+- hedgehog
 - http-client
 - http-media
-- QuickCheck
-- quickcheck-state-machine >= 0.7
 - mtl
+- quickcheck-state-machine >= 0.7
 - servant >= 0.17
 - servant-client >= 0.17
 - servant-flatten
 - servant-server >= 0.17
 - string-conversions
+
 # test deps
 - hspec
 - QuickCheck
-- warp
 - aeson
-- wai
+
+ghc-options: -Wall
+
 library:
   source-dirs: src
 

@@ -1,52 +1,27 @@
-{-# LANGUAGE AllowAmbiguousTypes   #-}
-{-# LANGUAGE DataKinds             #-}
-{-# LANGUAGE FlexibleContexts      #-}
-{-# LANGUAGE FlexibleInstances     #-}
-{-# LANGUAGE GADTs                 #-}
-{-# LANGUAGE KindSignatures        #-}
-{-# LANGUAGE MultiParamTypeClasses #-}
-{-# LANGUAGE PolyKinds             #-}
-{-# LANGUAGE QuantifiedConstraints #-}
-{-# LANGUAGE RankNTypes            #-}
-{-# LANGUAGE ScopedTypeVariables   #-}
-{-# LANGUAGE TypeApplications      #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE TypeOperators         #-}
-{-# LANGUAGE UndecidableInstances  #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TypeApplications #-}
 
-import           Roboservant
-import           Servant.API
-import           Test.Hspec
-import qualified Roboservant.StateMachine as SM
+import Data.Proxy (Proxy (..))
+import qualified Foo
+import Hedgehog (Group (..), checkSequential)
+import qualified Roboservant as RS
+import Servant (Endpoints)
+import qualified UnsafeIO
 
-newtype Foo = Foo Int
-  deriving (Show)
-
-newtype Bar = Bar String
-  deriving (Show)
-
-type FooApi = "foo" :> "fle" :> "far" :> Get '[JSON] Foo
-
-type BarApi = "bar" :> ReqBody '[JSON] Foo :> Post '[JSON] Bar
-
-type Api =
-  FooApi :<|> BarApi
-
-type Foo' = ExtractRespType FooApi
-
-test :: ()
-test = foo'EqualFoo
-  where
-    foo'EqualFoo :: Foo' ~ Foo => ()
-    foo'EqualFoo = ()
-
-test' :: ()
-test' = blah
-  where
-    blah :: ExtractRespTypes Api ~ '[Foo, Bar] => ()
-    blah = ()
-
-storeOfOurApi = storeOfApi @Api
+-- | this is pretty bad. hopefully Jacob knows a better way of doing this.
+--   https://twitter.com/mwotton/status/1305189249646460933
+assert :: String -> Bool -> IO ()
+assert _ True = pure ()
+assert err False = ioError $ userError err
 
 main :: IO ()
-main = SM.tests  >>= print
+main = do
+  let reifiedApi = RS.toReifiedApi (RS.flattenServer @Foo.FooApi Foo.fooServer) (Proxy @(Endpoints Foo.FooApi))
+  assert "should find an error in Foo" . not
+    =<< checkSequential (Group "Foo" [("Foo", RS.prop_sequential reifiedApi)])
+  unsafeServer <- UnsafeIO.makeServer
+  let unsafeApi = RS.toReifiedApi (RS.flattenServer @UnsafeIO.UnsafeApi unsafeServer) (Proxy @(Endpoints UnsafeIO.UnsafeApi))
+  -- this will not detect the error, as it requires concurrency.
+  assert "should find nothing" =<< checkSequential (Group "Unsafe" [("Sequential", RS.prop_sequential unsafeApi)])
+  assert "should find with parallel check" . not
+    =<< checkSequential (Group "Unsafe" [("Parallel", RS.prop_concurrent unsafeApi)])
