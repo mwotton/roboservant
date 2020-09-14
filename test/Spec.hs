@@ -16,7 +16,7 @@ assert err False = ioError $ userError err
 main :: IO ()
 main = do
   assert "should find an error in Foo" . not
-    =<< checkSequential (Group "Foo" [("Foo", withTests 1000 $ RS.prop_sequential @Foo.FooApi Foo.fooServer)])
+    =<< checkSequential (Group "Foo" [("Foo", withTests 100000 $ RS.prop_sequential @Foo.FooApi Foo.fooServer)])
   -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- could: it's mostly here to show how to test for concurrency problems.
   unsafeServer <- UnsafeIO.makeServer
