@@ -1,5 +1,5 @@
 name:                roboservant
-version:             0.1.0.0
+version:             0.1.0.2
 github:              "mwotton/roboservant"
 license:             BSD3
 author:              "Mark Wotton, Samuel Schlesinger"
@@ -16,24 +16,15 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 
-- QuickCheck
 - bytestring
 - containers
 - hedgehog
-- http-client
-- http-media
 - mtl
-- quickcheck-state-machine >= 0.7
 - servant >= 0.17
 - servant-client >= 0.17
 - servant-flatten
 - servant-server >= 0.17
 - string-conversions
-
-# test deps
-- hspec
-- QuickCheck
-- aeson
 
 ghc-options: -Wall
 
@@ -50,3 +41,4 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - roboservant
+    - aeson

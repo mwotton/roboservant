@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 83f44d7e193afdbe2e62584983f73420b90328cbc0ea01f626d16313091641cf
+-- hash: 67cc7a07268595f2ecee28556db571d2c4031ecc011ebc7d42e54b1a242022a0
 
 name:           roboservant
 version:        0.1.0.0
@@ -37,17 +37,10 @@ library
       src
   ghc-options: -Wall
   build-depends:
-      QuickCheck
-    , aeson
-    , base >=4.7 && <5
+      base >=4.7 && <5
     , bytestring
     , containers
     , hedgehog
-    , hspec
-    , http-client
-    , http-media
-    , mtl
-    , quickcheck-state-machine >=0.7
     , servant >=0.17
     , servant-client >=0.17
     , servant-flatten
@@ -66,17 +59,11 @@ test-suite roboservant-test
       test
   ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      QuickCheck
-    , aeson
+      aeson
     , base >=4.7 && <5
     , bytestring
     , containers
     , hedgehog
-    , hspec
-    , http-client
-    , http-media
-    , mtl
-    , quickcheck-state-machine >=0.7
     , roboservant
     , servant >=0.17
     , servant-client >=0.17
