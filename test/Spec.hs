@@ -24,4 +24,4 @@ main = do
   assert "should find nothing" =<< checkSequential (Group "Unsafe" [("Sequential", RS.prop_sequential @UnsafeIO.UnsafeApi unsafeServer)])
   -- this will!
   assert "should find with parallel check" . not
-    =<< checkSequential (Group "Unsafe" [("Parallel", RS.prop_concurrent @UnsafeIO.UnsafeApi unsafeServer)])
+    =<< checkSequential (Group "Unsafe" [("Parallel", withTests 100000 $ RS.prop_concurrent @UnsafeIO.UnsafeApi unsafeServer)])
