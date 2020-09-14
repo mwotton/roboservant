@@ -20,10 +20,10 @@ dependencies:
 - containers
 - hedgehog
 - mtl
-- servant >= 0.17
-- servant-client >= 0.17
+- servant # >= 0.17
+- servant-client # >= 0.17
 - servant-flatten
-- servant-server >= 0.17
+- servant-server # >= 0.17
 - string-conversions
 
 ghc-options: -Wall

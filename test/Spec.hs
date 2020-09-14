@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeApplications #-}
 
 import qualified Foo
+import qualified Headers
 import Hedgehog (Group (..), checkSequential, withTests)
 import qualified Roboservant as RS
 import qualified UnsafeIO
@@ -17,6 +18,10 @@ main :: IO ()
 main = do
   assert "should find an error in Foo" . not
     =<< checkSequential (Group "Foo" [("Foo", withTests 100000 $ RS.prop_sequential @Foo.FooApi Foo.fooServer)])
+
+  assert "should find an error in Headers" . not
+    =<< checkSequential (Group "Headers" [("Headers", withTests 10000 $ RS.prop_sequential @Headers.Api Headers.server)])
+    
   -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- could: it's mostly here to show how to test for concurrency problems.
   unsafeServer <- UnsafeIO.makeServer

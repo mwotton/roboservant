@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.31.2.
+-- This file has been generated from package.yaml by hpack version 0.33.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 179b83962de30f5bcf8b13d2f0648b301a753367094171f21a68e60b5cb4e4d5
+-- hash: 0bfe1c9487789846b43d871520e7e546842a8ff9acb003e426d5282dac1e6aa1
 
 name:           roboservant
 version:        0.1.0.2
@@ -42,10 +42,10 @@ library
     , containers
     , hedgehog
     , mtl
-    , servant >=0.17
-    , servant-client >=0.17
+    , servant
+    , servant-client
     , servant-flatten
-    , servant-server >=0.17
+    , servant-server
     , string-conversions
   default-language: Haskell2010
 
@@ -54,6 +54,7 @@ test-suite roboservant-test
   main-is: Spec.hs
   other-modules:
       Foo
+      Headers
       UnsafeIO
       Paths_roboservant
   hs-source-dirs:
@@ -67,9 +68,9 @@ test-suite roboservant-test
     , hedgehog
     , mtl
     , roboservant
-    , servant >=0.17
-    , servant-client >=0.17
+    , servant
+    , servant-client
     , servant-flatten
-    , servant-server >=0.17
+    , servant-server
     , string-conversions
   default-language: Haskell2010
