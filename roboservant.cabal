@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 54c16a0abf993f08c909111fc8c7a86a3e633745bc93734d36b3bf9ccb93062a
+-- hash: c6f561e011d580d9e17888decc01e0d8d54c8508b04d3dfff3cfcb7f37e5f2e1
 
 name:           roboservant
 version:        0.1.0.2
@@ -67,6 +67,9 @@ test-suite roboservant-test
     , bytestring
     , containers
     , hedgehog
+    , hspec
+    , hspec-core
+    , hspec-hedgehog
     , mtl
     , roboservant
     , servant

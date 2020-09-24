@@ -179,8 +179,11 @@ newtype ApiOffset = ApiOffset Int
 -- | we need to specify an offset because it's entirely possible to have two
 --   functions with the same arguments that do different things.
 data Op (v :: * -> *) = Op ApiOffset [(TypeRep, Var (Opaque (IORef Dynamic)) v)]
+                      | Preload TypeRep (Var Dynamic v)
 
 deriving instance Show (Op Symbolic)
 
 instance HTraversable Op where
-  htraverse r (Op offset args) = Op offset <$> traverse (\(t, v) -> (t,) <$> htraverse r v) args
+  htraverse r = \case
+    Op offset args -> Op offset <$> traverse (\(t, v) -> (t,) <$> htraverse r v) args
+    Preload tr v -> Preload tr <$> htraverse r v
