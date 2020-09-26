@@ -21,12 +21,15 @@ spec :: Spec
 spec = do
   describe "Basic usage" $ do
     describe "seeded" $ do
-      shouldFail $
-        it "finds an error using information passed in" $
-          hedgehog $ RS.prop_sequential @Seeded.Api Seeded.server [toDyn $ Seeded.Seed 1]
+      modifyMaxSuccess (const 10000) $
+        shouldFail $
+          it "finds an error using information passed in" $
+            hedgehog $ RS.prop_sequential @Seeded.Api Seeded.server [toDyn $ Seeded.Seed 1]
 
-    shouldFail $ it "finds an error in a basic app" $
-      hedgehog $ RS.prop_sequential @Foo.Api Foo.server []
+    modifyMaxSuccess (const 10000) $
+
+      shouldFail $ it "finds an error in a basic app" $
+        hedgehog $ RS.prop_sequential @Foo.Api Foo.server []
 
   describe "Headers" $ do
     shouldFail $ it "should find a failure that's dependent on using header info" $ do
