@@ -36,9 +36,10 @@ import Servant
 import Type.Reflection (SomeTypeRep)
 
 import Roboservant.Types
+import Roboservant.Hedgehog
 
 callEndpoint :: (MonadGen n, MonadIO m) => ReifiedApi -> [Dynamic] -> Command n m State
-callEndpoint staticRoutes seed =
+callEndpoint staticRoutes _seed =
   let gen :: MonadGen n => State Symbolic -> Maybe (n (Op Symbolic))
       gen State {..}
         | any null options = Nothing
@@ -56,8 +57,8 @@ callEndpoint staticRoutes seed =
                 [(TypeRep, Var (Opaque (IORef Dynamic)) Symbolic)]
               )
           chooseOne opts = do
-            (offset, args) <- Gen.element opts
-            (offset,) <$> mapM (\(tr, argOpts) -> (tr,) <$> Gen.element argOpts) args
+            (offset, args) <- elementOrFail opts
+            (offset,) <$> mapM (\(tr, argOpts) -> (tr,) <$> elementOrFail argOpts) args
           options :: [(ApiOffset, [(TypeRep, [Var (Opaque (IORef Dynamic)) Symbolic])])]
           options =
             mapMaybe
@@ -71,12 +72,9 @@ callEndpoint staticRoutes seed =
         (MonadIO m) =>
         Op Concrete ->
         m (Opaque (IORef Dynamic))
-      execute (Preload tr v) = fmap Opaque . liftIO $ do
+      execute (Preload _tr v) = fmap Opaque . liftIO $ do
         newIORef . concrete $ v
-        --fmap Opaque . liftIO $
---        _ v
       execute (Op (ApiOffset offset) args) = do
-        --        traceM (show (offset, args))
         fmap Opaque . liftIO $ do
           realArgs <- mapM (\(_tr, v) -> readIORef (opaque v)) args
           let (_offset, _staticArgs, _ret, endpoint) = staticRoutes !! offset
@@ -97,7 +95,7 @@ callEndpoint staticRoutes seed =
         execute
         [ Update $ \s@State {..} op o' ->
             case op of
-              Preload tr v -> s { stateRefs =
+              Preload tr _v -> s { stateRefs =
                                   Map.insertWith (<>) tr (pure o') stateRefs }
               (Op (ApiOffset offset) _args)  ->
                 s
@@ -115,7 +113,6 @@ callEndpoint staticRoutes seed =
 prop_sequential :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api)) => Server api -> [Dynamic] -> PropertyT IO ()
 prop_sequential server seed = do
   let reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
-  -- refs <- Map.fromList <$> mapM (\d -> (dynTypeRep d,) <$> newIORef d) seed
 
   actions <-
     forAll $ do
@@ -124,10 +121,10 @@ prop_sequential server seed = do
         (State mempty)
         [callEndpoint reifiedApi seed]
 
-  executeSequential (undefined) actions
+  executeSequential (State mempty) actions
 
-prop_concurrent :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api)) => Server api -> PropertyT IO ()
-prop_concurrent server =
+prop_concurrent :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api)) => Server api -> [Dynamic] -> PropertyT IO ()
+prop_concurrent server seed =
   let reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api)) in
   let initialState = State mempty
    in do
@@ -137,6 +134,6 @@ prop_concurrent server =
               (Range.linear 1 50)
               (Range.linear 1 10)
               initialState
-              [callEndpoint reifiedApi []]
+              [callEndpoint reifiedApi seed]
         test $
           executeParallel initialState actions

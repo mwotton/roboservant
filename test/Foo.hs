@@ -20,7 +20,7 @@ instance ToJSON Foo
 
 instance FromJSON Foo
 
-type FooApi =
+type Api =
   "item" :> Get '[JSON] Foo
     :<|> "itemAdd" :> Capture "one" Foo :> Capture "two" Foo :> Get '[JSON] Foo
     :<|> "item" :> Capture "itemId" Foo :> Get '[JSON] ()
@@ -36,8 +36,8 @@ eliminate (Foo a)
   | a > 10 = throwError $ err500 {errBody = "eliminate blew up, oh no!"}
   | otherwise = pure ()
 
-fooServer :: Server FooApi
-fooServer =
+server :: Server Api
+server =
   intro
     :<|> combine
     :<|> eliminate
