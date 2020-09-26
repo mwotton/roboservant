@@ -32,9 +32,11 @@ spec = do
         hedgehog $ RS.prop_sequential @Foo.Api Foo.server []
 
   describe "Headers" $ do
-    shouldFail $ it "should find a failure that's dependent on using header info" $ do
-      let _ = hedgehog $ RS.prop_sequential @Headers.Api Headers.server []
-      pending
+    modifyMaxSuccess (const 10000) $
+
+      shouldFail $ it "should find a failure that's dependent on using header info" $ do
+        hedgehog $ RS.prop_sequential @Headers.Api Headers.server []
+  --      pending
 
   -- -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- -- could: it's mostly here to show how to test for concurrency problems.

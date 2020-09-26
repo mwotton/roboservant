@@ -22,6 +22,7 @@ module Roboservant.StateMachine
   )
 where
 
+import Control.Monad (guard)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic)
 import Data.IORef (IORef, newIORef)
@@ -42,13 +43,12 @@ import Type.Reflection (SomeTypeRep)
 callEndpoint :: (MonadGen n, MonadIO m) => ReifiedApi -> Command n m State
 callEndpoint staticRoutes =
   let gen :: MonadGen n => State Symbolic -> Maybe (n (Op Symbolic))
-      gen State {..} = case preloads of
-        (v : _) -> Just $ pure $ Preload (dynTypeRep v) v
-        _ ->
-          if any null options
-            then Nothing
-            else Just $ do
-              uncurry Op <$> chooseOne options
+      gen State {..} = case chewable of
+        -- Chewable values still need to be broken down.
+        (c : _) -> Just $ pure $ Chewable c
+        _ -> do
+          guard $ not $ null options
+          pure $ uncurry Op <$> chooseOne options
         where
           chooseOne ::
             MonadGen n =>
@@ -76,7 +76,9 @@ callEndpoint staticRoutes =
         (MonadIO m) =>
         Op Concrete ->
         m (Opaque (IORef Dynamic))
-      execute (Preload _tr v) = Opaque <$> liftIO (newIORef v)
+      -- bit subtle here - a chewable v _also_ gets a var, because chewing it should
+      -- only give subcomponents.
+      execute (Chewable v) = Opaque <$> liftIO (newIORef v)
       execute (Op (ApiOffset offset) args) = do
         fmap Opaque . liftIO $ do
           realArgs <- mapM (readIORef . opaque) args
@@ -98,12 +100,13 @@ callEndpoint staticRoutes =
         execute
         [ Update $ \s@State {..} op o' ->
             case op of
-              Preload tr _v ->
-                s
-                  { stateRefs =
-                      Map.insertWith (<>) tr (pure o') stateRefs,
-                    preloads = drop 1 preloads
-                  }
+              Chewable v ->
+                let (c : cs) = chewable
+                 in s
+                      { stateRefs =
+                          Map.insertWith (<>) (dynTypeRep v) (pure o') stateRefs,
+                        chewable = (breakdownDynamic c) <> cs
+                      }
               (Op (ApiOffset offset) _args) ->
                 s
                   { stateRefs =
@@ -116,6 +119,11 @@ callEndpoint staticRoutes =
                   }
         ]
 
+-- | just a stub for now - this is where we probably have to start using ConstrainedDynamic
+--   so we can pack them in with a Breakdown constraint. TODO.
+breakdownDynamic :: Dynamic -> [Dynamic]
+breakdownDynamic = const []
+
 prop_sequential :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api)) => Server api -> [Dynamic] -> PropertyT IO ()
 prop_sequential server seed = do
   let reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
@@ -123,9 +131,9 @@ prop_sequential server seed = do
     forAll $ do
       Gen.sequential
         (Range.linear 1 100)
-        (State mempty seed)
+        (emptyState {chewable = seed})
         [callEndpoint reifiedApi]
-  executeSequential (State mempty seed) actions
+  executeSequential (emptyState {chewable = seed}) actions
 
 prop_concurrent :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api)) => Server api -> [Dynamic] -> PropertyT IO ()
 prop_concurrent server seed =
@@ -136,7 +144,7 @@ prop_concurrent server seed =
             Gen.parallel
               (Range.linear 1 50)
               (Range.linear 1 10)
-              (State mempty seed)
+              (emptyState {chewable = seed})
               [callEndpoint reifiedApi]
         test $
-          executeParallel (State mempty seed) actions
+          executeParallel (emptyState {chewable = seed}) actions

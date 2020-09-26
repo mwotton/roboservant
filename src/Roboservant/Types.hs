@@ -31,11 +31,16 @@ import Hedgehog (HTraversable (..), Opaque, Symbolic, Var)
 import Roboservant.Types.FlattenServer
 import Roboservant.Types.ReifiedApi
 
+-- | preloads are basically done, just waiting for a Var.
+--   chewable things may have more structure in them.
 data State v
   = State
       { stateRefs :: Map TypeRep (NonEmpty (Var (Opaque (IORef Dynamic)) v)),
-        preloads :: [Dynamic]
+        chewable :: [Dynamic]
       }
+
+emptyState :: forall v. State v
+emptyState = State mempty mempty
 
 -- | we need to specify an offset because it's entirely possible to have two
 --   functions with the same arguments that do different things.
@@ -44,11 +49,11 @@ data Op (v :: * -> *)
     -- because a single argument to the api could be a sum type with many constructors and varying
     -- arguments itself.
     Op ApiOffset [(Var (Opaque (IORef Dynamic)) v)]
-  | Preload TypeRep Dynamic
+  | Chewable Dynamic
 
 deriving instance Show (Op Symbolic)
 
 instance HTraversable Op where
   htraverse r = \case
     Op offset args -> Op offset <$> traverse (htraverse r) args
-    Preload tr v -> pure $ Preload tr v
+    Chewable v -> pure $ Chewable v
