@@ -33,7 +33,7 @@ newtype ApiOffset = ApiOffset Int
 
 type ReifiedEndpoint = ([TypeRep], TypeRep, Dynamic)
 
-type ReifiedApi = [(ApiOffset, [TypeRep], TypeRep, Dynamic)]
+type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
 
 
 class ToReifiedApi (endpoints :: [*]) where
@@ -50,12 +50,10 @@ instance
   ToReifiedApi (endpoint : endpoints)
   where
   toReifiedApi (endpoint `AnEndpoint` endpoints) _ =
-    withOffset (toReifiedEndpoint (toDyn (normalize endpoint)) (Proxy @endpoint))
+    (0,) (toReifiedEndpoint (toDyn (normalize endpoint)) (Proxy @endpoint))
       : map
-        (\(n, x, y, z) -> (n + 1, x, y, z))
+        (\(n, x) -> (n + 1, x))
         (toReifiedApi endpoints (Proxy @endpoints))
-    where
-      withOffset (x, y, z) = (0, x, y, z)
 
 class NormalizeFunction m where
   type Normal m

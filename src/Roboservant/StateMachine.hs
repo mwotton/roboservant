@@ -66,7 +66,7 @@ callEndpoint staticRoutes =
           options :: [(ApiOffset, [[Var (Opaque (IORef Dynamic)) Symbolic]])]
           options =
             mapMaybe
-              ( \(offset, argreps, _retType, _dynCall) -> (offset,) <$> do
+              ( \(offset, (argreps, _retType, _dynCall)) -> (offset,) <$> do
                   mapM fillableWith argreps
               )
               staticRoutes
@@ -82,7 +82,7 @@ callEndpoint staticRoutes =
       execute (Op (ApiOffset offset) args) = do
         fmap Opaque . liftIO $ do
           realArgs <- mapM (readIORef . opaque) args
-          let (_offset, _staticArgs, _ret, endpoint) = staticRoutes !! offset
+          let (_offset, (_staticArgs, _ret, endpoint)) = staticRoutes !! offset
               -- now, magic happens: we apply some dynamic arguments to a dynamic
               -- function and hopefully something useful pops out the end.
               func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just endpoint) realArgs
@@ -110,7 +110,7 @@ callEndpoint staticRoutes =
               (Op (ApiOffset offset) _args) ->
                 s
                   { stateRefs =
-                      let (_, _, tr, _) = staticRoutes !! offset
+                      let (_, (_, tr, _)) = staticRoutes !! offset
                        in Map.insertWith
                             (<>)
                             tr
