@@ -25,13 +25,15 @@ import GHC.TypeLits (Symbol)
 import Servant
 import Servant.API.Modifiers(FoldRequired,FoldLenient)
 import Roboservant.Types.FlattenServer
+import Roboservant.Types.Breakdown
+import Data.List.NonEmpty (NonEmpty)
 
 
 newtype ApiOffset = ApiOffset Int
   deriving (Eq, Show)
   deriving newtype (Enum, Num)
 
-type ReifiedEndpoint = ([TypeRep], TypeRep, Dynamic)
+type ReifiedEndpoint = ([TypeRep], NonEmpty Dynamic)
 
 type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
 
@@ -63,18 +65,20 @@ instance NormalizeFunction x => NormalizeFunction (r -> x) where
   type Normal (r -> x) = r -> Normal x
   normalize = fmap normalize
 
-instance Typeable x => NormalizeFunction (Handler x) where
-  type Normal (Handler x) = IO (Either ServerError (TypeRep, Dynamic))
+instance (Typeable x, Breakdown x) => NormalizeFunction (Handler x) where
+  type Normal (Handler x) = IO (Either ServerError (NonEmpty Dynamic))
   normalize handler = (runExceptT . runHandler') handler >>= \case
     Left serverError -> pure (Left serverError)
-    Right x -> pure (Right (typeRep (Proxy @x), toDyn x))
+    Right x -> pure $ Right $ breakdown x
+
+--      pure (Right (typeRep (Proxy @x), toDyn x))
 
 instance
-  Typeable responseType =>
+  (Typeable responseType, Breakdown responseType) =>
   ToReifiedEndpoint (Verb method statusCode contentTypes responseType)
   where
-  toReifiedEndpoint endpoint _ =
-    ([], typeRep (Proxy @responseType), endpoint)
+  toReifiedEndpoint endpoint _ = id
+    ([],  _ endpoint)
 
 instance
   (ToReifiedEndpoint endpoint) =>

@@ -18,6 +18,7 @@
 module Roboservant.Types.Breakdown where
 
 import Data.Dynamic (Dynamic, dynTypeRep, fromDynamic, toDyn)
+import Data.IORef (IORef)
 import Data.List.NonEmpty (NonEmpty)
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
@@ -25,25 +26,29 @@ import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (TypeRep, Typeable, typeRep)
-import Hedgehog (Gen)
+import Hedgehog (Gen, Opaque, Var)
 import qualified Hedgehog.Gen as Gen
 
-class Typeable x => BuildFrom x where
-  buildFrom :: Map TypeRep (NonEmpty Dynamic) -> [x]
-  default buildFrom :: Map TypeRep (NonEmpty Dynamic) -> [x]
-  buildFrom = maybe [] (fmap promisedDyn . NEL.toList) . Map.lookup (typeRep (Proxy @x))
+type Stash v = Map TypeRep (NonEmpty (Var (Opaque (IORef Dynamic)) v))
 
-instance BuildFrom x => BuildFrom (Maybe x) where
-  buildFrom dict = Nothing : fmap Just (buildFrom dict)
+-- class Typeable x => BuildFrom x where
+--   buildFrom :: Stash -> [x]
+--   default buildFrom :: Map TypeRep (NonEmpty Dynamic) -> [x]
+--   buildFrom = maybe [] (fmap promisedDyn . NEL.toList) . Map.lookup (typeRep (Proxy @x))
+
+-- instance BuildFrom x => BuildFrom (Maybe x) where
+--   buildFrom dict = Nothing : fmap Just (buildFrom dict)
 
 class Breakdown x where
-  breakdown :: x -> Map TypeRep (NonEmpty Dynamic)
+  breakdown :: x -> NonEmpty Dynamic
 
 -- | Can't break it down any further -- stuck in your teeth, maybe.
 newtype Chewy x = Chewy x
 
 instance Typeable x => Breakdown (Chewy x) where
-  breakdown x = let d = toDyn x in Map.fromList [(dynTypeRep d, pure d)]
+  breakdown x = pure (toDyn x)
+
+--let d = toDyn x in Map.fromList [(dynTypeRep d, pure d)]
 
 -- instance (Typeable x, Generic x) => Breakdown x where
 --   breakdown = Map.fromListWith (<>) . fmap ((dynTypeRep &&& (\x -> NEL.fromList [x])) . toDyn . Generics.to) . _ . Generics.from
