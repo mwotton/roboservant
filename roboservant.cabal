@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4f60e8b535f448b3d09b5f49b6851d27412b133b35f4381078d9693228b977cb
+-- hash: eec4253f2196a058b05c08988d5c544f7238982abba63f6b0112014f043771b2
 
 name:           roboservant
 version:        0.1.0.2
@@ -30,6 +30,7 @@ source-repository head
 library
   exposed-modules:
       Roboservant
+      Roboservant.Direct
       Roboservant.Hedgehog
       Roboservant.StateMachine
       Roboservant.Types
@@ -40,7 +41,7 @@ library
       Paths_roboservant
   hs-source-dirs:
       src
-  ghc-options: -Wall
+  ghc-options: -Wall -fwrite-ide-info -hiedir=.hie
   build-depends:
       base >=4.7 && <5
     , bytestring
@@ -65,7 +66,7 @@ test-suite roboservant-test
       Paths_roboservant
   hs-source-dirs:
       test
-  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5

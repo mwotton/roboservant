@@ -33,7 +33,7 @@ newtype ApiOffset = ApiOffset Int
   deriving (Eq, Show)
   deriving newtype (Enum, Num)
 
-type ReifiedEndpoint = ([TypeRep], NonEmpty Dynamic)
+type ReifiedEndpoint = ([TypeRep], Dynamic)
 
 type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
 
@@ -78,7 +78,7 @@ instance
   ToReifiedEndpoint (Verb method statusCode contentTypes responseType)
   where
   toReifiedEndpoint endpoint _ = id
-    ([],  _ endpoint)
+    ([],  endpoint)
 
 instance
   (ToReifiedEndpoint endpoint) =>
@@ -107,7 +107,7 @@ instance
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @Bool) : args, result, typeRepMap)
+      & \(args, result) -> (typeRep (Proxy @Bool) : args, result)
 
 instance
   (Typeable (If (FoldRequired mods) paramType (Maybe paramType)), ToReifiedEndpoint endpoint, SBoolI (FoldRequired mods)) =>
@@ -115,7 +115,7 @@ instance
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @(If (FoldRequired mods) paramType (Maybe paramType))) : args, result, typeRepMap)
+      & \(args, result) -> (typeRep (Proxy @(If (FoldRequired mods) paramType (Maybe paramType))) : args, result)
 
 instance
   (Typeable (If (FoldRequired mods) headerType (Maybe headerType)), ToReifiedEndpoint endpoint, SBoolI (FoldRequired mods)) =>
@@ -123,7 +123,7 @@ instance
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @(If (FoldRequired mods) headerType (Maybe headerType))) : args, result, typeRepMap)
+      & \(args, result) -> (typeRep (Proxy @(If (FoldRequired mods) headerType (Maybe headerType))) : args, result)
 
 instance
   (Typeable captureType, ToReifiedEndpoint endpoint) =>
@@ -131,7 +131,7 @@ instance
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @captureType) : args, result, typeRepMap)
+      & \(args, result) -> (typeRep (Proxy @captureType) : args, result)
 
 instance
   (Typeable (If (FoldLenient mods) (Either String requestType) requestType), ToReifiedEndpoint endpoint, SBoolI (FoldLenient mods)) =>
@@ -139,4 +139,4 @@ instance
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @(If (FoldLenient mods) (Either String requestType) requestType)) : args, result, typeRepMap)
+      & \(args, result) -> (typeRep (Proxy @(If (FoldLenient mods) (Either String requestType) requestType)) : args, result)
