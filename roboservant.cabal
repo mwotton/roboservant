@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: eec4253f2196a058b05c08988d5c544f7238982abba63f6b0112014f043771b2
+-- hash: 98b1024875f8d30a7818bbd16bf5f56375b76735f24931a17da3914852edcf6c
 
 name:           roboservant
 version:        0.1.0.2
@@ -32,7 +32,6 @@ library
       Roboservant
       Roboservant.Direct
       Roboservant.Hedgehog
-      Roboservant.StateMachine
       Roboservant.Types
       Roboservant.Types.Breakdown
       Roboservant.Types.FlattenServer
@@ -47,7 +46,10 @@ library
     , bytestring
     , containers
     , hedgehog
+    , lifted-base
+    , monad-control
     , mtl
+    , random
     , servant
     , servant-client
     , servant-flatten
@@ -76,7 +78,10 @@ test-suite roboservant-test
     , hspec
     , hspec-core
     , hspec-hedgehog
+    , lifted-base
+    , monad-control
     , mtl
+    , random
     , roboservant
     , servant
     , servant-client

@@ -19,6 +19,9 @@ dependencies:
 - bytestring
 - containers
 - hedgehog
+- random
+- lifted-base
+- monad-control
 - mtl
 - servant # >= 0.17
 - servant-client # >= 0.17

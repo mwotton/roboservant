@@ -1,3 +1,3 @@
-module Roboservant (module Roboservant.StateMachine) where
+module Roboservant (module Roboservant.Direct) where
 
-import Roboservant.StateMachine
+import Roboservant.Direct
