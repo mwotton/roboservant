@@ -17,7 +17,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Roboservant.Direct
-  ( fuzz
+  ( fuzz, Config(..)
   )
 where
 
@@ -28,27 +28,12 @@ import System.Random
 import System.Timeout.Lifted
 import Control.Monad (guard)
 import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic)
+import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic, toDyn)
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
 import Data.Map.Strict(Map)
 import Data.Maybe (mapMaybe)
 import Data.Typeable (TypeRep)
-import Hedgehog
-  ( Callback (Update),
-    Command (Command),
-    Concrete,
-    MonadGen,
-    Opaque (Opaque),
-    PropertyT,
-    Symbolic,
-    Var,
-    executeSequential,
-    forAll,
-    opaque,
-  )
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
 import Roboservant.Hedgehog (elementOrFail)
 import Roboservant.Types
   ( ApiOffset (..),
@@ -60,7 +45,7 @@ import Roboservant.Types
     emptyState,
   )
 import Servant (Endpoints, Proxy (Proxy), Server, ServerError)
-import Type.Reflection (SomeTypeRep)
+import Type.Reflection (SomeTypeRep(..),withTypeable)
 
 --    prop_concurrent,
 import Control.Monad (guard)
@@ -84,9 +69,10 @@ import Roboservant.Types
   )
 import Servant (Endpoints, Proxy (Proxy), Server, ServerError)
 import Type.Reflection (SomeTypeRep)
+import Roboservant.Types.Breakdown
 
 data RoboservantException
-  = RoboservantException FailureType SomeException FuzzOp FuzzState
+  = RoboservantException FailureType (Maybe SomeException) FuzzState
   deriving (Show)
 -- we believe in nussink, lebowski
 instance Exception RoboservantException
@@ -97,51 +83,22 @@ data FailureType
   | NoPossibleMoves
   deriving (Show,Eq)
 
--- update :: Callback Op (Opaque (NEL.NonEmpty Dynamic)) State
--- update = Update $ \s@State {..} op o' ->
---   case op of
---     Chewable offset tr v -> case _extract offset trs chewable of
---       Nothing -> error "internal error"
---       Just (tr, _extracted, rest) ->
---         s
---           { stateRefs =
---               -- so, what's going on here... we need to be able to grab and merge
---               -- a list of (typeref, var). this means that we need to be able to pull
---               -- out typereps symbolically too, we can't just rely on the dynamic being there.
---               --                        Map.insertWith (<>) (dynTypeRep v) _  (pure o') stateRefs,
---               Map.insertWith (<>) tr (_ o') stateRefs,
---             chewable = rest
---           }
---     (Op (ApiOffset _offset) _args) ->
---       s
---         { chewable = _ o' : chewable
---           -- Map.insertWith
---           --   (<>)
---           --   tr
---           --   (pure o')
---           -- stateRefs
---         }
 
-
-data Reference = Reference
-  { tr :: TypeRep
-  , offset :: Int
-  } deriving (Show,Eq)
-
-data FuzzOp = FuzzOp ApiOffset [Reference]
+data FuzzOp = FuzzOp ApiOffset [Provenance]
   deriving (Show,Eq)
 
 data Config
   = Config
   { seed :: [Dynamic]
   , maxRuntime :: Int -- seconds to test for
+  , maxReps :: Int
   , rngSeed :: Int
-  , currentRng :: StdGen
   }
 
 data FuzzState = FuzzState
   { path :: [FuzzOp]
-  , stash :: Map TypeRep (NEL.NonEmpty (Reference,Dynamic))
+  , stash :: Stash
+  , currentRng :: StdGen
   }
   deriving (Show)
 
@@ -150,75 +107,84 @@ fuzz :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api))
      -> Config
      -> IO ()
      -> IO ()
-fuzz server Config{..} checker =
+fuzz server Config{..} checker = do
+  let path = []
+      stash = addToStash seed mempty
+      currentRng = mkStdGen rngSeed
   -- either we time out without finding an error, which is fine, or we find an error
   -- and throw an exception that propagates through this.
-  void $ timeout (maxRuntime * 1000000) ( execStateT (forever go) FuzzState{..})
+
+  void $ timeout (maxRuntime * 1000000) ( execStateT (replicateM maxReps go) FuzzState{..})
+  -- mapM_ print reifiedApi
 
   where
 
     reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
 
-    elementOrFail :: MonadState FuzzState m
+    elementOrFail :: (MonadState FuzzState m, MonadIO m)
                   => [a] -> m a
-    elementOrFail = undefined
+    elementOrFail [] = liftIO . throw . RoboservantException NoPossibleMoves Nothing =<< get
+    elementOrFail l = do
+      st <- get
+      let (index,newGen) = randomR (0, length l - 1) (currentRng st)
+      modify' $ \st -> st { currentRng = newGen }
+      pure (l !! index)
 
-    genOp :: MonadState FuzzState m
-          => m FuzzOp
+    genOp :: (MonadState FuzzState m, MonadIO m)
+          => m (FuzzOp, Dynamic, [Dynamic])
     genOp = do -- fs@FuzzState{..} = do
       -- choose a call to make, from the endpoints with fillable arguments.
-      (offset, args) <- elementOrFail . options =<< get
-      -- choose a (symbolic) argument from each. we drop the Dynamic here because it's
-      -- not showable, which is no good for tests - though possibly it would make sense
-      -- to use the constrained-dynamic stuff here? (or even just stash the string form)
-      r <- (FuzzOp offset) <$> mapM (elementOrFail . fmap fst . NEL.toList) args
-      modify' (\f -> f { path = r:path f })
-      pure r
+      (offset, dynCall, args) <- elementOrFail . options =<< get
+      r <- mapM (elementOrFail . zip [0..] . NEL.toList) args
+      let pathSegment = FuzzOp offset (map (\(index,(_,dyn) ) -> Provenance (dynTypeRep dyn) index) r)
+      modify' (\f -> f { path = path f <> [pathSegment] })
+      pure (pathSegment, dynCall, fmap (snd . snd) r)
 
-
---           chooseOne opts = do
---
---             (offset,) <$> mapM elementOrFail args
       where
-        options :: FuzzState -> [(ApiOffset, [NEL.NonEmpty (Reference, Dynamic)])]
+        options :: FuzzState -> [(ApiOffset, Dynamic, [NEL.NonEmpty ([Provenance], Dynamic)])]
         options FuzzState{..} =
           mapMaybe
-            ( \(offset, (argreps, _dynCall)) -> (offset,) <$> do
-                mapM (flip Map.lookup stash) argreps
+            ( \(offset, (argreps, dynCall)) -> (offset,dynCall,) <$> do
+                -- tricky: need to have some kind of type witness here.
+                mapM (\(tr,bf) -> bf stash ) argreps
             )
             reifiedApi
-    execute :: MonadState FuzzState m
-          => FuzzOp -> m ()
-    execute = undefined
 
+    execute :: (MonadState FuzzState m, MonadIO m)
+          => (FuzzOp,Dynamic,[Dynamic])  -> m ()
+    execute (fuzzop, dyncall, args) = do
+      liftIO $ print fuzzop
+      -- now, magic happens: we apply some dynamic arguments to a dynamic
+      -- function and hopefully something useful pops out the end.
+      let func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just dyncall) args
+      st <- get
+      let showable = show (fuzzop,st)
 
-
-        --     execute (Op (ApiOffset offset) args) = do
-        -- fmap Opaque . liftIO $ do
-        --   let realArgs = map opaque args
-        --   let (_offset, (_staticArgs, endpoint)) = staticRoutes !! offset
-        --       -- now, magic happens: we apply some dynamic arguments to a dynamic
-        --       -- function and hopefully something useful pops out the end.
-        --       func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just endpoint) realArgs
-        --   let showable = "blah" -- map dynTypeRep (_endpoint : realArgs)
-        --   case func of
-        --     Nothing -> error ("all screwed up: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
-        --     Just (f') -> do
-        --       case fromDynamic f' of
-        --         Nothing -> error ("all screwed up: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
-        --         Just f -> liftIO f >>= \case
-        --           Left (serverError :: ServerError) -> error (show serverError)
-        --           Right (_typeRep :: SomeTypeRep, (dyn :: NEL.NonEmpty Dynamic)) -> pure dyn
-
+      result <- case func of
+        Nothing -> error ("all screwed up 1: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
+        Just (f') -> do
+          -- liftIO $ print
+          case fromDynamic f' of
+            Nothing -> error ("all screwed up 2: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
+            Just (f) -> liftIO f >>= \case
+              Left (serverError :: ServerError) -> error (show serverError)
+              Right (dyn :: NEL.NonEmpty Dynamic) -> do
+                liftIO $ print ("storing", fmap dynTypeRep dyn)
+                pure dyn
+--              Right (_typeRep :: SomeTypeRep, (dyn :: NEL.NonEmpty Dynamic)) -> pure dyn
+      -- do stuff with result TODO
+      modify' (\f@FuzzState{..} ->
+                 f { stash = addToStash (NEL.toList result) stash } )
+      pure ()
 
     go :: (MonadState FuzzState m, MonadIO m, MonadBaseControl IO m)
          => m ()
     go = do
-      fuzzOp <- genOp
-      catch (execute fuzzOp)
-        (\(e :: SomeException) -> throw . RoboservantException ServerCrashed e fuzzOp =<< get)
+      op@(fuzzOp,_,_) <- genOp
+      catch (execute op)
+        (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e)  =<< get)
       catch (liftIO checker)
-        (\(e :: SomeException) -> throw . RoboservantException CheckerFailed e fuzzOp =<< get)
+        (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e)  =<< get)
 
   -- actions <-
   --   forAll $ do
@@ -227,3 +193,18 @@ fuzz server Config{..} checker =
   --       emptyState
   --       (fmap preload seed <> [callEndpoint reifiedApi])
       --  executeSequential emptyState actions
+addToStash :: [Dynamic]
+           -> Map TypeRep (NEL.NonEmpty ([Provenance], Dynamic))
+           -> Map TypeRep (NEL.NonEmpty ([Provenance], Dynamic))
+addToStash result stash =
+  foldr (\dyn dict -> let tr = dynTypeRep dyn in
+                        Map.insertWith renumber tr (pure ([Provenance tr 0],dyn)) dict) stash result
+-- Map.insertWith (flip (<>)) (dynTypeRep result) (_pure result) stash   })
+  where
+    renumber :: NEL.NonEmpty ([Provenance],Dynamic)
+             -> NEL.NonEmpty ([Provenance],Dynamic)
+             -> NEL.NonEmpty ([Provenance],Dynamic)
+    renumber singleDyn l = case NEL.toList singleDyn of
+      [([Provenance tr _], dyn)] -> l
+        <> pure ([Provenance tr (length (NEL.last l) + 1)], dyn)
+      _ -> error "should be impossible"

@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 98b1024875f8d30a7818bbd16bf5f56375b76735f24931a17da3914852edcf6c
+-- hash: 1888c4b3943c76b64ad25923aa442bce85a047a929aec7b47d805f008681ac26
 
 name:           roboservant
 version:        0.1.0.2
@@ -65,6 +65,7 @@ test-suite roboservant-test
       Headers
       Seeded
       UnsafeIO
+      Valid
       Paths_roboservant
   hs-source-dirs:
       test
