@@ -18,45 +18,66 @@
 module Roboservant.Types.Breakdown where
 
 import Data.Dynamic (Dynamic, dynTypeRep, fromDynamic, toDyn)
-import Data.List.NonEmpty (NonEmpty)
+import Data.IORef (IORef)
+import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
 import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (TypeRep, Typeable, typeRep)
-import Hedgehog (Gen)
+import Hedgehog (Gen, Opaque, Var)
 import qualified Hedgehog.Gen as Gen
 
+-- type Stash v = Map TypeRep (NonEmpty (Var (Opaque (IORef Dynamic)) v))
+data Provenance
+  = Provenance TypeRep Int
+  deriving (Show,Eq)
+type Stash = Map TypeRep (NonEmpty ([Provenance], Dynamic))
+
 class Typeable x => BuildFrom x where
-  buildFrom :: Map TypeRep (NonEmpty Dynamic) -> [x]
-  default buildFrom :: Map TypeRep (NonEmpty Dynamic) -> [x]
-  buildFrom = maybe [] (fmap promisedDyn . NEL.toList) . Map.lookup (typeRep (Proxy @x))
+  buildFrom :: Stash -> Maybe (NonEmpty ([Provenance],Dynamic))
+  default buildFrom :: Stash -> Maybe (NonEmpty ([Provenance], Dynamic))
+  buildFrom = baseLookup (typeRep (Proxy @x))
+  -- (fmap promisedDyn . NEL.toList) . Map.lookup (typeRep (Proxy @x))
 
-instance BuildFrom x => BuildFrom (Maybe x) where
-  buildFrom dict = Nothing : fmap Just (buildFrom dict)
 
-class Breakdown x where
-  breakdown :: x -> Map TypeRep (NonEmpty Dynamic)
-
--- | Can't break it down any further -- stuck in your teeth, maybe.
-newtype Chewy x = Chewy x
-
-instance Typeable x => Breakdown (Chewy x) where
-  breakdown x = let d = toDyn x in Map.fromList [(dynTypeRep d, pure d)]
-
--- instance (Typeable x, Generic x) => Breakdown x where
---   breakdown = Map.fromListWith (<>) . fmap ((dynTypeRep &&& (\x -> NEL.fromList [x])) . toDyn . Generics.to) . _ . Generics.from
-
-class Create x where
-  create :: Map TypeRep (NonEmpty Dynamic) -> Maybe (Gen x)
-
-instance Typeable x => Create x where
-  create mmm =
-    (fmap Gen.element) $
-      fmap promisedDyn . NEL.toList
-        <$> Map.lookup (typeRep (Proxy @x)) mmm
+baseLookup :: TypeRep -> Stash -> Maybe (NonEmpty ([Provenance], Dynamic))
+baseLookup tr mmm = -- Map.lookup (typeRep (Proxy @x)) mmm
+  Map.lookup tr mmm
 
 -- | only use this when we are using the internal typerep map.
 promisedDyn :: Typeable a => Dynamic -> a
 promisedDyn = fromMaybe (error "internal error, typerep map misconstructed") . fromDynamic
+
+instance BuildFrom Bool
+
+instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
+  buildFrom dict = Just $ fmap toDyn <$>  options
+    where options :: NonEmpty ([Provenance], Maybe x)
+          options = ([],Nothing) :|
+                    (maybe [] NEL.toList . fmap (fmap (fmap (Just . promisedDyn @x)))
+                      $ buildFrom @x  dict)
+            -- maybe [] (fmap (fmap fromDynamic) . NEL.toList)
+  -- maybe _ _ (buildFrom dict)
+
+class Breakdown x where
+  breakdown :: x -> NonEmpty Dynamic
+
+-- | Can't break it down any further -- stuck in your teeth, maybe.
+newtype Chewy x = Chewy { unChew :: x }
+
+instance Breakdown () where
+  breakdown = pure . toDyn
+
+instance Breakdown Int where
+  breakdown = pure . toDyn
+
+
+instance Typeable x => Breakdown (Chewy x) where
+  breakdown x = pure (toDyn x)
+
+--let d = toDyn x in Map.fromList [(dynTypeRep d, pure d)]
+
+-- instance (Typeable x, Generic x) => Breakdown x where
+--   breakdown = Map.fromListWith (<>) . fmap ((dynTypeRep &&& (\x -> NEL.fromList [x])) . toDyn . Generics.to) . _ . Generics.from

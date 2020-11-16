@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4f60e8b535f448b3d09b5f49b6851d27412b133b35f4381078d9693228b977cb
+-- hash: 1888c4b3943c76b64ad25923aa442bce85a047a929aec7b47d805f008681ac26
 
 name:           roboservant
 version:        0.1.0.2
@@ -30,8 +30,8 @@ source-repository head
 library
   exposed-modules:
       Roboservant
+      Roboservant.Direct
       Roboservant.Hedgehog
-      Roboservant.StateMachine
       Roboservant.Types
       Roboservant.Types.Breakdown
       Roboservant.Types.FlattenServer
@@ -40,13 +40,16 @@ library
       Paths_roboservant
   hs-source-dirs:
       src
-  ghc-options: -Wall
+  ghc-options: -Wall -fwrite-ide-info -hiedir=.hie
   build-depends:
       base >=4.7 && <5
     , bytestring
     , containers
     , hedgehog
+    , lifted-base
+    , monad-control
     , mtl
+    , random
     , servant
     , servant-client
     , servant-flatten
@@ -62,10 +65,11 @@ test-suite roboservant-test
       Headers
       Seeded
       UnsafeIO
+      Valid
       Paths_roboservant
   hs-source-dirs:
       test
-  ghc-options: -Wall -threaded -rtsopts -with-rtsopts=-N
+  ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson
     , base >=4.7 && <5
@@ -75,7 +79,10 @@ test-suite roboservant-test
     , hspec
     , hspec-core
     , hspec-hedgehog
+    , lifted-base
+    , monad-control
     , mtl
+    , random
     , roboservant
     , servant
     , servant-client

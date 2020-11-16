@@ -1,3 +1,5 @@
-module Roboservant (module Roboservant.StateMachine) where
+module Roboservant (module Roboservant.Direct
+                   ,module Roboservant.Types.Breakdown) where
 
-import Roboservant.StateMachine
+import Roboservant.Direct
+import Roboservant.Types.Breakdown

@@ -23,20 +23,22 @@ module Roboservant.Types
 where
 
 import Data.Dynamic (Dynamic)
-import Data.IORef (IORef)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Map.Strict (Map)
 import Data.Typeable (TypeRep)
 import Hedgehog (HTraversable (..), Opaque, Symbolic, Var)
-import Roboservant.Types.FlattenServer
+import Roboservant.Types.FlattenServer ( FlattenServer(..) )
 import Roboservant.Types.ReifiedApi
+    ( ApiOffset(..), ReifiedApi, ToReifiedApi(..) )
 
--- | preloads are basically done, just waiting for a Var.
---   chewable things may have more structure in them.
 data State v
   = State
-      { stateRefs :: Map TypeRep (NonEmpty (Var (Opaque (IORef Dynamic)) v)),
-        chewable :: [Dynamic]
+      { stateRefs :: Map TypeRep (NonEmpty (Var (Opaque Dynamic) v)),
+      -- this is unfortunate. ideally we'd keep it structurally linked so there was a typerep
+      -- for each var, but of course, when it's evaluated symbolically, there is no Var to look at.
+      -- therefore we maintain the invariant manually
+        chewable :: [(NonEmpty TypeRep,
+            Var (Opaque (NonEmpty Dynamic)) v)  ]
       }
 
 emptyState :: forall v. State v
@@ -48,12 +50,12 @@ data Op (v :: * -> *)
   = -- this needs to change - need a constructor offset and a list of vars inside,
     -- because a single argument to the api could be a sum type with many constructors and varying
     -- arguments itself.
-    Op ApiOffset [(Var (Opaque (IORef Dynamic)) v)]
-  | Chewable Dynamic
+    Op ApiOffset [Var (Opaque Dynamic) v]
+  | Chewable Int TypeRep  (Var (Opaque (Dynamic)) v)
 
 deriving instance Show (Op Symbolic)
 
 instance HTraversable Op where
   htraverse r = \case
     Op offset args -> Op offset <$> traverse (htraverse r) args
-    Chewable v -> pure $ Chewable v
+    Chewable i trs v -> Chewable i trs <$> htraverse r v

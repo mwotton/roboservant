@@ -25,13 +25,15 @@ import GHC.TypeLits (Symbol)
 import Servant
 import Servant.API.Modifiers(FoldRequired,FoldLenient)
 import Roboservant.Types.FlattenServer
+import Roboservant.Types.Breakdown
+import Data.List.NonEmpty (NonEmpty)
 
 
 newtype ApiOffset = ApiOffset Int
   deriving (Eq, Show)
   deriving newtype (Enum, Num)
 
-type ReifiedEndpoint = ([TypeRep], TypeRep, Dynamic)
+type ReifiedEndpoint = ([(TypeRep, Stash -> Maybe (NonEmpty ([Provenance], Dynamic)))], Dynamic)
 
 type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
 
@@ -63,18 +65,20 @@ instance NormalizeFunction x => NormalizeFunction (r -> x) where
   type Normal (r -> x) = r -> Normal x
   normalize = fmap normalize
 
-instance Typeable x => NormalizeFunction (Handler x) where
-  type Normal (Handler x) = IO (Either ServerError (TypeRep, Dynamic))
+instance (Typeable x, Breakdown x) => NormalizeFunction (Handler x) where
+  type Normal (Handler x) = IO (Either ServerError (NonEmpty Dynamic))
   normalize handler = (runExceptT . runHandler') handler >>= \case
     Left serverError -> pure (Left serverError)
-    Right x -> pure (Right (typeRep (Proxy @x), toDyn x))
+    Right x -> pure $ Right $ breakdown x
+
+--      pure (Right (typeRep (Proxy @x), toDyn x))
 
 instance
-  Typeable responseType =>
+  (Typeable responseType, Breakdown responseType) =>
   ToReifiedEndpoint (Verb method statusCode contentTypes responseType)
   where
-  toReifiedEndpoint endpoint _ =
-    ([], typeRep (Proxy @responseType), endpoint)
+  toReifiedEndpoint endpoint _ = id
+    ([],  endpoint)
 
 instance
   (ToReifiedEndpoint endpoint) =>
@@ -98,41 +102,63 @@ instance
     toReifiedEndpoint endpoint (Proxy @endpoint)
 
 instance
-  (Typeable requestType, ToReifiedEndpoint endpoint) =>
+  (Typeable requestType
+  ,BuildFrom requestType
+  ,ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (QueryFlag name :> endpoint)
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @Bool) : args, result, typeRepMap)
+      & \(args, result) -> ((typeRep (Proxy @Bool),buildFrom @Bool) : args, result)
 
 instance
-  (Typeable (If (FoldRequired mods) paramType (Maybe paramType)), ToReifiedEndpoint endpoint, SBoolI (FoldRequired mods)) =>
+  ( Typeable (If (FoldRequired mods) paramType (Maybe paramType))
+  , BuildFrom (If (FoldRequired mods) paramType (Maybe paramType))
+  , ToReifiedEndpoint endpoint
+  , SBoolI (FoldRequired mods)) =>
   ToReifiedEndpoint (QueryParam' mods name paramType :> endpoint)
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @(If (FoldRequired mods) paramType (Maybe paramType))) : args, result, typeRepMap)
+      & \(args, result) ->
+          ((typeRep (Proxy @(If (FoldRequired mods) paramType (Maybe paramType)))
+           ,buildFrom @(If (FoldRequired mods) paramType (Maybe paramType)))
+            : args, result)
 
 instance
-  (Typeable (If (FoldRequired mods) headerType (Maybe headerType)), ToReifiedEndpoint endpoint, SBoolI (FoldRequired mods)) =>
+  ( Typeable (If (FoldRequired mods) headerType (Maybe headerType))
+  , BuildFrom (If (FoldRequired mods) headerType (Maybe headerType))
+  , ToReifiedEndpoint endpoint
+  , SBoolI (FoldRequired mods)) =>
   ToReifiedEndpoint (Header' mods headerName headerType :> endpoint)
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @(If (FoldRequired mods) headerType (Maybe headerType))) : args, result, typeRepMap)
+      & \(args, result) -> ((typeRep (Proxy @(If (FoldRequired mods) headerType (Maybe headerType)))
+                            ,buildFrom  @(If (FoldRequired mods) headerType (Maybe headerType)))
+
+                            : args, result)
 
 instance
-  (Typeable captureType, ToReifiedEndpoint endpoint) =>
+  ( Typeable captureType
+  , BuildFrom captureType
+  , ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (Capture' mods name captureType :> endpoint)
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @captureType) : args, result, typeRepMap)
+      & \(args, result) -> ((typeRep (Proxy @captureType)
+                            ,buildFrom @captureType)
+                            : args, result)
 
 instance
-  (Typeable (If (FoldLenient mods) (Either String requestType) requestType), ToReifiedEndpoint endpoint, SBoolI (FoldLenient mods)) =>
+  ( Typeable (If (FoldLenient mods) (Either String requestType) requestType)
+  , BuildFrom (If (FoldLenient mods) (Either String requestType) requestType)
+  , ToReifiedEndpoint endpoint, SBoolI (FoldLenient mods)) =>
   ToReifiedEndpoint (ReqBody' mods contentTypes requestType :> endpoint)
   where
   toReifiedEndpoint endpoint _ =
     toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result, typeRepMap) -> (typeRep (Proxy @(If (FoldLenient mods) (Either String requestType) requestType)) : args, result, typeRepMap)
+      & \(args, result) -> ((typeRep (Proxy @(If (FoldLenient mods) (Either String requestType) requestType))
+                            ,buildFrom @(If (FoldLenient mods) (Either String requestType) requestType))
+                            : args, result)

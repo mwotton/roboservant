@@ -19,6 +19,9 @@ dependencies:
 - bytestring
 - containers
 - hedgehog
+- random
+- lifted-base
+- monad-control
 - mtl
 - servant # >= 0.17
 - servant-client # >= 0.17
@@ -26,8 +29,10 @@ dependencies:
 - servant-server # >= 0.17
 - string-conversions
 
-ghc-options: -Wall
-
+ghc-options:
+- -Wall
+- -fwrite-ide-info
+- -hiedir=.hie
 library:
   source-dirs: src
 
