@@ -61,7 +61,9 @@ instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
 
 class Breakdown x where
   breakdown :: x -> NonEmpty Dynamic
-
+  default breakdown :: Typeable x => x -> NonEmpty Dynamic
+  breakdown = pure . toDyn
+  
 -- | Can't break it down any further -- stuck in your teeth, maybe.
 newtype Chewy x = Chewy { unChew :: x }
 
@@ -83,3 +85,7 @@ instance Typeable x => Breakdown (Chewy x) where
 
 instance (Typeable a, Breakdown a) => Breakdown [a] where
   breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
+
+instance (BuildFrom a) => BuildFrom [a] -- where
+--  breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
+

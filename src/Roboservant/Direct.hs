@@ -23,7 +23,7 @@ where
 
 import Control.Monad.Trans.Control
 import Control.Monad.State.Strict
-import Control.Exception.Lifted(throw,Exception,SomeException,catch)
+import Control.Exception.Lifted(throw,Handler(..), Exception,SomeException,SomeAsyncException, catch, catches)
 import System.Random
 import System.Timeout.Lifted
 import Control.Monad (guard)
@@ -46,7 +46,6 @@ import Roboservant.Types
   )
 import Servant (Endpoints, Proxy (Proxy), Server, ServerError)
 import Type.Reflection (SomeTypeRep(..),withTypeable)
-
 --    prop_concurrent,
 import Control.Monad (guard)
 import Control.Monad.IO.Class (MonadIO, liftIO)
@@ -115,7 +114,7 @@ fuzz server Config{..} checker = do
   -- and throw an exception that propagates through this.
 
   void $ timeout (maxRuntime * 1000000) ( execStateT (replicateM maxReps go) FuzzState{..})
-  -- mapM_ print reifiedApi
+  mapM_ (print . (\(offset, (args, dyn) ) -> (offset, map fst args, dyn))) reifiedApi
 
   where
 
@@ -158,8 +157,15 @@ fuzz server Config{..} checker = do
       -- function and hopefully something useful pops out the end.
       let func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just dyncall) args
       st <- get
-      let showable = show (fuzzop,st)
-
+      let showable = unlines $ ("args":map (show . dynTypeRep) args)
+            <> ["fuzzop"
+               , show fuzzop
+               ,"dyncall"
+               ,show (dynTypeRep dyncall)
+               ,"state"
+               ,show st]
+      liftIO $ putStrLn showable
+      
       result <- case func of
         Nothing -> error ("all screwed up 1: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
         Just (f') -> do
@@ -181,8 +187,10 @@ fuzz server Config{..} checker = do
          => m ()
     go = do
       op@(fuzzOp,_,_) <- genOp
-      catch (execute op)
-        (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e)  =<< get)
+      catches (execute op)
+        [ Handler (\(e :: SomeAsyncException) -> throw e)
+        , Handler (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e)  =<< get)
+        ]
       catch (liftIO checker)
         (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e)  =<< get)
 

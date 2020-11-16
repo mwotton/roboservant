@@ -28,17 +28,14 @@ spec = do
         RS.fuzz @Valid.Api Valid.server (RS.Config [toDyn $ Seeded.Seed 1] 1 1000 1) noCheck
     describe "seeded" $ do
       shouldFail $
-          it "finds an error using information passed in" $
-            RS.fuzz @Seeded.Api Seeded.server (RS.Config [toDyn $ Seeded.Seed 1] 5 1000 1) noCheck
+        it "finds an error using information passed in" $
+          RS.fuzz @Seeded.Api Seeded.server (RS.Config [toDyn $ Seeded.Seed 1] 5 1000 1) noCheck
 
       shouldFail $ it "finds an error in a basic app" $
         RS.fuzz @Foo.Api Foo.server (RS.Config [] 5 1000 1) noCheck
 
       shouldFail $ it "should find a failure that's dependent on using header info" $ do
-        -- known problem: can't build up headers yet
         RS.fuzz @Headers.Api Headers.server (RS.Config [] 5 10000 1) noCheck
-  --       hedgehog $ RS.prop_sequential @Headers.Api Headers.server []
-  -- --      pending
 
   -- -- -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- -- -- could: it's mostly here to show how to test for concurrency problems.
