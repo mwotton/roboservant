@@ -21,54 +21,27 @@ module Roboservant.Direct
   )
 where
 
-import Control.Monad.Trans.Control
-import Control.Monad.State.Strict
 import Control.Exception.Lifted(throw,Handler(..), Exception,SomeException,SomeAsyncException, catch, catches)
-import System.Random
-import System.Timeout.Lifted
-import Control.Monad (guard)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic, toDyn)
-import qualified Data.List.NonEmpty as NEL
-import qualified Data.Map.Strict as Map
+import Control.Monad(void,replicateM)
+import Control.Monad.State.Strict(MonadState,MonadIO,get,modify',liftIO,execStateT)
+import Control.Monad.Trans.Control(MonadBaseControl)
+import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic)
 import Data.Map.Strict(Map)
 import Data.Maybe (mapMaybe)
 import Data.Typeable (TypeRep)
-import Roboservant.Hedgehog (elementOrFail)
-import Roboservant.Types
-  ( ApiOffset (..),
-    FlattenServer (..),
-    Op (..),
-    ReifiedApi,
-    State (..),
-    ToReifiedApi (..),
-    emptyState,
-  )
-import Servant (Endpoints, Proxy (Proxy), Server, ServerError)
-import Type.Reflection (SomeTypeRep(..),withTypeable)
---    prop_concurrent,
-import Control.Monad (guard)
-import Control.Monad.IO.Class (MonadIO, liftIO)
-import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic)
+import Servant (Endpoints, Proxy (Proxy), Server, ServerError(..))
+import System.Random(StdGen,randomR,mkStdGen)
+import System.Timeout.Lifted(timeout)
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
-import Data.Maybe (mapMaybe)
-import Data.Typeable (TypeRep)
-import qualified Hedgehog.Gen as Gen
-import qualified Hedgehog.Range as Range
-import Roboservant.Hedgehog (elementOrFail)
+
+import Roboservant.Types.Breakdown
 import Roboservant.Types
   ( ApiOffset (..),
     FlattenServer (..),
-    Op (..),
-    ReifiedApi,
-    State (..),
+--    ReifiedApi,
     ToReifiedApi (..),
-    emptyState,
   )
-import Servant (Endpoints, Proxy (Proxy), Server, ServerError)
-import Type.Reflection (SomeTypeRep)
-import Roboservant.Types.Breakdown
 
 data RoboservantException
   = RoboservantException FailureType (Maybe SomeException) FuzzState
@@ -126,7 +99,7 @@ fuzz server Config{..} checker = do
     elementOrFail l = do
       st <- get
       let (index,newGen) = randomR (0, length l - 1) (currentRng st)
-      modify' $ \st -> st { currentRng = newGen }
+      modify' $ \st' -> st' { currentRng = newGen }
       pure (l !! index)
 
     genOp :: (MonadState FuzzState m, MonadIO m)
@@ -144,8 +117,7 @@ fuzz server Config{..} checker = do
         options FuzzState{..} =
           mapMaybe
             ( \(offset, (argreps, dynCall)) -> (offset,dynCall,) <$> do
-                -- tricky: need to have some kind of type witness here.
-                mapM (\(tr,bf) -> bf stash ) argreps
+                mapM (\(_tr,bf) -> bf stash ) argreps
             )
             reifiedApi
 
@@ -155,7 +127,7 @@ fuzz server Config{..} checker = do
       liftIO $ print fuzzop
       -- now, magic happens: we apply some dynamic arguments to a dynamic
       -- function and hopefully something useful pops out the end.
-      let func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just dyncall) args
+      let func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just dyncall) (reverse args)
       st <- get
       let showable = unlines $ ("args":map (show . dynTypeRep) args)
             <> ["fuzzop"
@@ -166,27 +138,30 @@ fuzz server Config{..} checker = do
                ,show st]
       liftIO $ putStrLn showable
       
-      result <- case func of
+      case func of
         Nothing -> error ("all screwed up 1: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
         Just (f') -> do
           -- liftIO $ print
           case fromDynamic f' of
             Nothing -> error ("all screwed up 2: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
             Just (f) -> liftIO f >>= \case
-              Left (serverError :: ServerError) -> error (show serverError)
+              -- parameterise this
+              Left (serverError :: ServerError) ->
+                case errHTTPCode serverError of
+                  500 -> throw serverError
+                  _ -> do
+                    liftIO $ print ("ignoring non-500 error" , serverError)
+
               Right (dyn :: NEL.NonEmpty Dynamic) -> do
                 liftIO $ print ("storing", fmap dynTypeRep dyn)
-                pure dyn
---              Right (_typeRep :: SomeTypeRep, (dyn :: NEL.NonEmpty Dynamic)) -> pure dyn
-      -- do stuff with result TODO
-      modify' (\f@FuzzState{..} ->
-                 f { stash = addToStash (NEL.toList result) stash } )
+                modify' (\fs@FuzzState{..} ->
+                  fs { stash = addToStash (NEL.toList dyn) stash } )
       pure ()
 
     go :: (MonadState FuzzState m, MonadIO m, MonadBaseControl IO m)
          => m ()
     go = do
-      op@(fuzzOp,_,_) <- genOp
+      op <- genOp
       catches (execute op)
         [ Handler (\(e :: SomeAsyncException) -> throw e)
         , Handler (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e)  =<< get)

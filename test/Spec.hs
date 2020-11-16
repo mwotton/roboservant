@@ -1,23 +1,24 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
-
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 import qualified Foo
 import qualified Seeded
 import qualified Valid
 import qualified Headers
-import qualified UnsafeIO
+-- import qualified UnsafeIO
+
+import Data.Dynamic(toDyn)
 import qualified Roboservant as RS
 
--- import Test.Hspec.Hedgehog
 import Test.Hspec
 import Test.Hspec.Core.Spec(shouldFail)
 
-import Data.Dynamic(toDyn)
 
 main :: IO ()
 main = hspec spec
 
+noCheck :: IO ()
 noCheck = pure ()
 
 spec :: Spec

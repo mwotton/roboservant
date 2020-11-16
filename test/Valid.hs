@@ -7,9 +7,6 @@
 
 module Valid where
 
-import Data.Aeson
-import Data.Typeable (Typeable)
-import GHC.Generics (Generic)
 import Servant
 
 type Api = Get '[JSON] Int

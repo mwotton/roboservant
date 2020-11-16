@@ -17,8 +17,7 @@
 
 module Roboservant.Types.Breakdown where
 
-import Data.Dynamic (Dynamic, dynTypeRep, fromDynamic, toDyn)
-import Data.IORef (IORef)
+import Data.Dynamic (Dynamic, fromDynamic, toDyn)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
@@ -26,8 +25,6 @@ import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (TypeRep, Typeable, typeRep)
-import Hedgehog (Gen, Opaque, Var)
-import qualified Hedgehog.Gen as Gen
 
 data Provenance
   = Provenance TypeRep Int
