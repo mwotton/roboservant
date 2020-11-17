@@ -27,6 +27,7 @@ dependencies:
 - servant-flatten
 - servant-server # >= 0.17
 - string-conversions
+- time
 
 ghc-options:
 - -Wall

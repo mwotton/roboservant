@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8359b70b81d2fdfc7001a1f607745da953f6e8f7b8188a54857d658406c238a2
+-- hash: 838fa22fc3ea6673432f485653caaca6c43bccce724777fafbb903dad8ce30cd
 
 name:           roboservant
 version:        0.1.0.2
@@ -53,6 +53,7 @@ library
     , servant-flatten
     , servant-server
     , string-conversions
+    , time
   default-language: Haskell2010
 
 test-suite roboservant-test
@@ -85,4 +86,5 @@ test-suite roboservant-test
     , servant-flatten
     , servant-server
     , string-conversions
+    , time
   default-language: Haskell2010

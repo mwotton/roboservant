@@ -13,7 +13,8 @@ import qualified Roboservant as RS
 
 import Test.Hspec
 import Test.Hspec.Core.Spec(shouldFail)
-
+import Data.Void
+import Data.Maybe
 
 main :: IO ()
 main = hspec spec
@@ -21,23 +22,29 @@ main = hspec spec
 noCheck :: IO ()
 noCheck = pure ()
 
+defaultConfig :: RS.Config
+defaultConfig = RS.Config [] 1 1000 1 0
+
 spec :: Spec
 spec = do
   describe "Basic usage" $ do
     describe "noError" $ do
       it "finds no error in a valid app" $ do
-        RS.fuzz @Valid.Api Valid.server (RS.Config [toDyn $ Seeded.Seed 1] 1 1000 1) noCheck
+        RS.fuzz @Valid.Api Valid.server defaultConfig noCheck `shouldReturn` Nothing
+      it "does fail coverage check" $ do
+        r <- RS.fuzz @Valid.Api Valid.server defaultConfig { RS.coverageThreshold = 0.6 } noCheck
+        r `shouldSatisfy` isJust
     describe "seeded" $ do
       shouldFail $
         it "finds an error using information passed in" $
-          RS.fuzz @Seeded.Api Seeded.server (RS.Config [toDyn $ Seeded.Seed 1] 5 1000 1) noCheck
-
+          RS.fuzz @Seeded.Api Seeded.server (defaultConfig{ RS.seed = [toDyn $ Seeded.Seed 1] }) noCheck
+            `shouldReturn` Nothing
       shouldFail $ it "finds an error in a basic app" $
-        RS.fuzz @Foo.Api Foo.server (RS.Config [] 5 1000 1) noCheck
-
+        RS.fuzz @Foo.Api Foo.server defaultConfig noCheck
+          `shouldReturn` Nothing
       shouldFail $ it "should find a failure that's dependent on using header info" $ do
-        RS.fuzz @Headers.Api Headers.server (RS.Config [] 5 10000 1) noCheck
-
+        RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
+          `shouldReturn` Nothing
   -- -- -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- -- -- could: it's mostly here to show how to test for concurrency problems.
   -- describe "concurrency bugs" $ do
@@ -65,3 +72,5 @@ instance RS.BuildFrom Foo.Foo
 instance RS.BuildFrom Headers.Foo
 
 instance RS.BuildFrom Seeded.Seed
+
+instance RS.BuildFrom Void
