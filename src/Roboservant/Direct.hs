@@ -18,15 +18,20 @@
 
 module Roboservant.Direct
   ( fuzz, Config(..)
+
+  -- TODO come up with something smarter than exporting all this, we should
+  -- have some nice error-display functions 
+  , RoboservantException(..), FuzzState(..), FuzzOp(..)
   )
 where
 
-import Control.Exception.Lifted(throw,Handler(..), Exception,SomeException,SomeAsyncException, catch, catches)
+import Control.Exception.Lifted(throw,handle,Handler(..), Exception,SomeException,SomeAsyncException, catch, catches)
 import Control.Monad(void,replicateM)
-import Control.Monad.State.Strict(MonadState,MonadIO,get,modify',liftIO,execStateT)
+import Control.Monad.State.Strict(MonadState,MonadIO,get,modify',liftIO,runStateT)
 import Control.Monad.Trans.Control(MonadBaseControl)
 import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic)
 import Data.Map.Strict(Map)
+import qualified Data.Set as Set
 import Data.Maybe (mapMaybe)
 import Data.Typeable (TypeRep)
 import Servant (Endpoints, Proxy (Proxy), Server, ServerError(..))
@@ -34,6 +39,7 @@ import System.Random(StdGen,randomR,mkStdGen)
 import System.Timeout.Lifted(timeout)
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
+import Data.Time.Clock
 
 import Roboservant.Types.Breakdown
 import Roboservant.Types
@@ -44,7 +50,7 @@ import Roboservant.Types
   )
 
 data RoboservantException
-  = RoboservantException FailureType (Maybe SomeException) FuzzState
+  = RoboservantException FailureType (Maybe SomeException) Int FuzzState 
   deriving (Show)
 -- we believe in nussink, lebowski
 instance Exception RoboservantException
@@ -53,18 +59,22 @@ data FailureType
   = ServerCrashed
   | CheckerFailed
   | NoPossibleMoves
+  | InsufficientCoverage
   deriving (Show,Eq)
 
 
-data FuzzOp = FuzzOp ApiOffset [Provenance]
-  deriving (Show,Eq)
+data FuzzOp = FuzzOp 
+  { apiOffset :: ApiOffset
+  , provenance :: [Provenance]
+  } deriving (Show,Eq)
 
 data Config
   = Config
   { seed :: [Dynamic]
-  , maxRuntime :: Int -- seconds to test for
-  , maxReps :: Int
+  , maxRuntime :: Integer -- seconds to test for
+  , maxReps :: Integer
   , rngSeed :: Int
+  , coverageThreshold :: Double
   }
 
 data FuzzState = FuzzState
@@ -74,28 +84,66 @@ data FuzzState = FuzzState
   }
   deriving (Show)
 
+data StopReason
+  = TimedOut
+  | HitMaxIterations
+  deriving (Show,Eq)
+
+data Report = Report
+  { textual :: String }
+  deriving (Show,Eq)  
+
 fuzz :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api))
      => Server api
      -> Config
      -> IO ()
-     -> IO ()
-fuzz server Config{..} checker = do
+     -> IO (Maybe Report)
+fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
   let path = []
       stash = addToStash seed mempty
       currentRng = mkStdGen rngSeed
+
+  
+  deadline :: UTCTime <- addUTCTime (fromInteger $ maxRuntime * 1000000) <$> getCurrentTime
   -- either we time out without finding an error, which is fine, or we find an error
   -- and throw an exception that propagates through this.
-
-  void $ timeout (maxRuntime * 1000000) ( execStateT (replicateM maxReps go) FuzzState{..})
-  mapM_ (print . (\(offset, (args, dyn) ) -> (offset, map fst args, dyn))) reifiedApi
+  
+  (stopreason, fs ) <- runStateT
+    (untilDone (maxReps, deadline) go <* (evaluateCoverage =<< get)) FuzzState{..}
+  pure Nothing
+  -- mapM_ (print . (\(offset, (args, dyn) ) -> (offset, map fst args, dyn))) reifiedApi
 
   where
+    -- something less terrible later
+    formatException :: RoboservantException -> Report
+    formatException = Report . show
 
+  --    evaluateCoverage :: FuzzState -> m ()
+    evaluateCoverage f@FuzzState{..}
+      | hitRoutes / totalRoutes > coverageThreshold = do
+          liftIO $ print ("passed coverage", hitRoutes, totalRoutes)
+          pure ()
+      | otherwise = throw $ RoboservantException InsufficientCoverage Nothing routeCount f
+      where hitRoutes = (fromIntegral . Set.size . Set.fromList $ map apiOffset path)
+            totalRoutes = (fromIntegral routeCount)
+        
+
+    untilDone :: MonadIO m => (Integer,UTCTime) -> m a -> m StopReason
+    untilDone (0,_) _ =  pure HitMaxIterations
+    untilDone (n, deadline) action = do
+      now <- liftIO getCurrentTime
+      if now > deadline
+        then pure TimedOut
+        else do
+          action
+          untilDone (n-1, deadline) action
+    
     reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
-
+    routeCount = length reifiedApi
+    
     elementOrFail :: (MonadState FuzzState m, MonadIO m)
                   => [a] -> m a
-    elementOrFail [] = liftIO . throw . RoboservantException NoPossibleMoves Nothing =<< get
+    elementOrFail [] = liftIO . throw . RoboservantException NoPossibleMoves Nothing routeCount =<< get
     elementOrFail l = do
       st <- get
       let (index,newGen) = randomR (0, length l - 1) (currentRng st)
@@ -124,7 +172,7 @@ fuzz server Config{..} checker = do
     execute :: (MonadState FuzzState m, MonadIO m)
           => (FuzzOp,Dynamic,[Dynamic])  -> m ()
     execute (fuzzop, dyncall, args) = do
-      liftIO $ print fuzzop
+      -- liftIO $ print fuzzop
       -- now, magic happens: we apply some dynamic arguments to a dynamic
       -- function and hopefully something useful pops out the end.
       let func = foldr (\arg curr -> flip dynApply arg =<< curr) (Just dyncall) (reverse args)
@@ -136,7 +184,7 @@ fuzz server Config{..} checker = do
                ,show (dynTypeRep dyncall)
                ,"state"
                ,show st]
-      liftIO $ putStrLn showable
+      -- liftIO $ putStrLn showable
       
       case func of
         Nothing -> error ("all screwed up 1: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
@@ -153,7 +201,7 @@ fuzz server Config{..} checker = do
                     liftIO $ print ("ignoring non-500 error" , serverError)
 
               Right (dyn :: NEL.NonEmpty Dynamic) -> do
-                liftIO $ print ("storing", fmap dynTypeRep dyn)
+                -- liftIO $ print ("storing", fmap dynTypeRep dyn)
                 modify' (\fs@FuzzState{..} ->
                   fs { stash = addToStash (NEL.toList dyn) stash } )
       pure ()
@@ -164,10 +212,10 @@ fuzz server Config{..} checker = do
       op <- genOp
       catches (execute op)
         [ Handler (\(e :: SomeAsyncException) -> throw e)
-        , Handler (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e)  =<< get)
+        , Handler (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e) routeCount  =<< get)
         ]
       catch (liftIO checker)
-        (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e)  =<< get)
+        (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e) routeCount  =<< get)
 
   -- actions <-
   --   forAll $ do

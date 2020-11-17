@@ -30,10 +30,12 @@ import Data.List.NonEmpty (NonEmpty)
 
 
 newtype ApiOffset = ApiOffset Int
-  deriving (Eq, Show)
+  deriving (Eq, Show, Ord)
   deriving newtype (Enum, Num)
 
-type ReifiedEndpoint = ([(TypeRep, Stash -> Maybe (NonEmpty ([Provenance], Dynamic)))], Dynamic)
+type ReifiedEndpoint = ([(TypeRep
+                         , Stash -> Maybe (NonEmpty ([Provenance], Dynamic)))]
+                       , Dynamic)
 
 type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
 
