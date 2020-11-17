@@ -30,21 +30,24 @@ spec = do
   describe "Basic usage" $ do
     describe "noError" $ do
       it "finds no error in a valid app" $ do
-        RS.fuzz @Valid.Api Valid.server defaultConfig noCheck `shouldReturn` Nothing
+        RS.fuzz @Valid.Api Valid.server defaultConfig noCheck
+          >>= (`shouldSatisfy` isNothing)
       it "does fail coverage check" $ do
         r <- RS.fuzz @Valid.Api Valid.server defaultConfig { RS.coverageThreshold = 0.6 } noCheck
-        r `shouldSatisfy` isJust
+        fmap (RS.failureReason . RS.rsException) r `shouldBe` Just RS.InsufficientCoverage
     describe "seeded" $ do
       shouldFail $
         it "finds an error using information passed in" $
           RS.fuzz @Seeded.Api Seeded.server (defaultConfig{ RS.seed = [toDyn $ Seeded.Seed 1] }) noCheck
-            `shouldReturn` Nothing
+            >>= (`shouldSatisfy` isNothing)
       shouldFail $ it "finds an error in a basic app" $
         RS.fuzz @Foo.Api Foo.server defaultConfig noCheck
-          `shouldReturn` Nothing
+          >>= (`shouldSatisfy` isNothing)
+  
       shouldFail $ it "should find a failure that's dependent on using header info" $ do
         RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
-          `shouldReturn` Nothing
+          >>= (`shouldSatisfy` isNothing)
+
   -- -- -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- -- -- could: it's mostly here to show how to test for concurrency problems.
   -- describe "concurrency bugs" $ do

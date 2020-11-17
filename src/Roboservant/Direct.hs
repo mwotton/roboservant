@@ -21,7 +21,7 @@ module Roboservant.Direct
 
   -- TODO come up with something smarter than exporting all this, we should
   -- have some nice error-display functions 
-  , RoboservantException(..), FuzzState(..), FuzzOp(..)
+  , RoboservantException(..), FuzzState(..), FuzzOp(..), FailureType(..), Report(..)
   )
 where
 
@@ -36,7 +36,6 @@ import Data.Maybe (mapMaybe)
 import Data.Typeable (TypeRep)
 import Servant (Endpoints, Proxy (Proxy), Server, ServerError(..))
 import System.Random(StdGen,randomR,mkStdGen)
-import System.Timeout.Lifted(timeout)
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
 import Data.Time.Clock
@@ -50,16 +49,19 @@ import Roboservant.Types
   )
 
 data RoboservantException
-  = RoboservantException FailureType (Maybe SomeException) Int FuzzState 
-  deriving (Show)
--- we believe in nussink, lebowski
+  = RoboservantException
+  { failureReason :: FailureType
+  , serverException :: Maybe SomeException
+  , fuzzState :: FuzzState
+  } deriving (Show)
+
 instance Exception RoboservantException
 
 data FailureType
   = ServerCrashed
   | CheckerFailed
   | NoPossibleMoves
-  | InsufficientCoverage
+  | InsufficientCoverage Double
   deriving (Show,Eq)
 
 
@@ -90,8 +92,9 @@ data StopReason
   deriving (Show,Eq)
 
 data Report = Report
-  { textual :: String }
-  deriving (Show,Eq)  
+  { textual :: String
+  , rsException :: RoboservantException}
+  deriving (Show)  
 
 fuzz :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api))
      => Server api
@@ -116,16 +119,20 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
   where
     -- something less terrible later
     formatException :: RoboservantException -> Report
-    formatException = Report . show
-
+    formatException r@(RoboservantException failureType exception _state)  = Report
+      (unlines  [ show failureType , show exception ])
+      r
+      
   --    evaluateCoverage :: FuzzState -> m ()
     evaluateCoverage f@FuzzState{..}
-      | hitRoutes / totalRoutes > coverageThreshold = do
-          liftIO $ print ("passed coverage", hitRoutes, totalRoutes)
-          pure ()
-      | otherwise = throw $ RoboservantException InsufficientCoverage Nothing routeCount f
+      | coverage > coverageThreshold = pure ()
+      | otherwise = do
+          liftIO $ do putStrLn "api endpoints covered"
+                      mapM_ print (Set.toList $ Set.fromList $ map apiOffset path)
+          throw $ RoboservantException (InsufficientCoverage coverage) Nothing f
       where hitRoutes = (fromIntegral . Set.size . Set.fromList $ map apiOffset path)
             totalRoutes = (fromIntegral routeCount)
+            coverage = hitRoutes / totalRoutes
         
 
     untilDone :: MonadIO m => (Integer,UTCTime) -> m a -> m StopReason
@@ -143,7 +150,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
     
     elementOrFail :: (MonadState FuzzState m, MonadIO m)
                   => [a] -> m a
-    elementOrFail [] = liftIO . throw . RoboservantException NoPossibleMoves Nothing routeCount =<< get
+    elementOrFail [] = liftIO . throw . RoboservantException NoPossibleMoves Nothing  =<< get
     elementOrFail l = do
       st <- get
       let (index,newGen) = randomR (0, length l - 1) (currentRng st)
@@ -212,10 +219,10 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       op <- genOp
       catches (execute op)
         [ Handler (\(e :: SomeAsyncException) -> throw e)
-        , Handler (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e) routeCount  =<< get)
+        , Handler (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e)  =<< get)
         ]
       catch (liftIO checker)
-        (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e) routeCount  =<< get)
+        (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e)   =<< get)
 
   -- actions <-
   --   forAll $ do
