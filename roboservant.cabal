@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8359b70b81d2fdfc7001a1f607745da953f6e8f7b8188a54857d658406c238a2
+-- hash: d9b75d0543bde313d954ce10fe6c45bbb21467e7c2d65320dc3a85e15a6ec345
 
 name:           roboservant
 version:        0.1.0.2
@@ -44,6 +44,8 @@ library
       base >=4.7 && <5
     , bytestring
     , containers
+    , dependent-map
+    , dependent-sum
     , lifted-base
     , monad-control
     , mtl
@@ -53,6 +55,8 @@ library
     , servant-flatten
     , servant-server
     , string-conversions
+    , text
+    , vinyl
   default-language: Haskell2010
 
 test-suite roboservant-test
@@ -73,6 +77,8 @@ test-suite roboservant-test
     , base >=4.7 && <5
     , bytestring
     , containers
+    , dependent-map
+    , dependent-sum
     , hspec
     , hspec-core
     , lifted-base
@@ -85,4 +91,6 @@ test-suite roboservant-test
     , servant-flatten
     , servant-server
     , string-conversions
+    , text
+    , vinyl
   default-language: Haskell2010

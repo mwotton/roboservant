@@ -27,6 +27,10 @@ dependencies:
 - servant-flatten
 - servant-server # >= 0.17
 - string-conversions
+- vinyl
+- dependent-sum
+- dependent-map
+- text
 
 ghc-options:
 - -Wall
