@@ -126,7 +126,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       mapM_ print (Set.toList $ Set.fromList $ map apiOffset path)
       putStrLn ""
       putStrLn "types in stash"
-      mapM_ print (map (\x -> (fst x, NEL.length (snd x))) . sortOn fst . Map.toList $ stash)
+      mapM_ print (map (\x -> (fst x, NEL.length (snd x))) . sortOn (show . fst) . Map.toList $ stash)
 
   --    evaluateCoverage :: FuzzState -> m ()
     evaluateCoverage f@FuzzState{..}
