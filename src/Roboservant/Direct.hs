@@ -39,6 +39,7 @@ import System.Random(StdGen,randomR,mkStdGen)
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
 import Data.Time.Clock
+import Data.List(sortOn)
 
 import Roboservant.Types.Breakdown
 import Roboservant.Types
@@ -108,9 +109,6 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
 
   
   deadline :: UTCTime <- addUTCTime (fromInteger $ maxRuntime * 1000000) <$> getCurrentTime
-  -- either we time out without finding an error, which is fine, or we find an error
-  -- and throw an exception that propagates through this.
-  
   (stopreason, fs ) <- runStateT
     (untilDone (maxReps, deadline) go <* (evaluateCoverage =<< get)) FuzzState{..}
   pure Nothing
@@ -122,13 +120,19 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
     formatException r@(RoboservantException failureType exception _state)  = Report
       (unlines  [ show failureType , show exception ])
       r
-      
+
+    displayDiagnostics FuzzState{..} = liftIO $ do
+      putStrLn "api endpoints covered"
+      mapM_ print (Set.toList $ Set.fromList $ map apiOffset path)
+      putStrLn ""
+      putStrLn "types in stash"
+      mapM_ print (map (\x -> (fst x, NEL.length (snd x))) . sortOn fst . Map.toList $ stash)
+
   --    evaluateCoverage :: FuzzState -> m ()
     evaluateCoverage f@FuzzState{..}
       | coverage > coverageThreshold = pure ()
       | otherwise = do
-          liftIO $ do putStrLn "api endpoints covered"
-                      mapM_ print (Set.toList $ Set.fromList $ map apiOffset path)
+          displayDiagnostics f
           throw $ RoboservantException (InsufficientCoverage coverage) Nothing f
       where hitRoutes = (fromIntegral . Set.size . Set.fromList $ map apiOffset path)
             totalRoutes = (fromIntegral routeCount)
@@ -213,13 +217,15 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
                   fs { stash = addToStash (NEL.toList dyn) stash } )
       pure ()
 
-    go :: (MonadState FuzzState m, MonadIO m, MonadBaseControl IO m)
-         => m ()
+--    go :: (MonadState FuzzState m, MonadIO m, MonadBaseControl IO m)
+--         => m ()
     go = do
       op <- genOp
       catches (execute op)
         [ Handler (\(e :: SomeAsyncException) -> throw e)
-        , Handler (\(e :: SomeException) -> throw . RoboservantException ServerCrashed (Just e)  =<< get)
+        , Handler (\(e :: SomeException) -> do
+                      displayDiagnostics =<< get
+                      throw . RoboservantException ServerCrashed (Just e)  =<< get)
         ]
       catch (liftIO checker)
         (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e)   =<< get)

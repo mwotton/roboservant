@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 838fa22fc3ea6673432f485653caaca6c43bccce724777fafbb903dad8ce30cd
+-- hash: d00686eca2b790a054d75ee02699e0505188e10e975cd6ebc7b06eeeb82923b4
 
 name:           roboservant
 version:        0.1.0.2
@@ -62,6 +62,7 @@ test-suite roboservant-test
   other-modules:
       Foo
       Headers
+      Post
       Seeded
       UnsafeIO
       Valid
