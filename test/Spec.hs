@@ -14,7 +14,7 @@ import Data.Dynamic(toDyn)
 import qualified Roboservant as RS
 
 import Test.Hspec
-import Test.Hspec.Core.Spec(shouldFail)
+import Test.Hspec.Core.Spec
 import Data.Void
 import Data.Maybe
 
@@ -93,3 +93,17 @@ instance RS.BuildFrom Void
 
 instance RS.Breakdown Post.FooPost
 instance RS.BuildFrom Post.FooPost
+
+
+-- | `shouldFail` allows you to assert that a given `Spec` should contain at least one failing test.
+--   this is often useful when testing tests.
+shouldFail :: SpecWith a -> SpecWith a
+shouldFail = mapSpecItem_ (\i -> i {
+                              itemExample = \p a cb -> do
+                                  r <- (itemExample i) p a cb
+                                  pure r {resultStatus = case resultStatus r of
+                                             Success -> Failure Nothing (Reason "Unexpected success")
+                                             Failure _ _ -> Success
+                                             x -> x
+                                         }
+                                   })

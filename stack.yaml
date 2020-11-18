@@ -1,4 +1,4 @@
-resolver: lts-16.16
+resolver: lts-16.8 #lts-16.16
 packages:
 - .
 
@@ -13,11 +13,11 @@ extra-deps:
 - QuickCheck-2.14.1@sha256:01e46d7b0a8d3148288ec977625f62d5516ebb5031a50c63f0453863301b4a79,7736
 - random-1.2.0
 - splitmix-0.1.0.1@sha256:22f9662e7e8b173421872241edd39350078a9ed4bb9e9f503948c5b483c79276,5253
-- git: https://github.com/hedgehogqa/haskell-hedgehog.git
-  commit: 03714682586e43b5ddf5c00391035471a6e01238
-  subdirs:
-    - hedgehog
-- git: https://github.com/mwotton/hspec
-  commit: cd9012414a93cf08f86e409544d4d3a8f282b507
-  subdirs:
-    - hspec-core
+# - git: https://github.com/hedgehogqa/haskell-hedgehog.git
+#   commit: 03714682586e43b5ddf5c00391035471a6e01238
+#   subdirs:
+#     - hedgehog
+# - git: https://github.com/mwotton/hspec
+#   commit: cd9012414a93cf08f86e409544d4d3a8f282b507
+#   subdirs:
+#     - hspec-core

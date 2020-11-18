@@ -67,35 +67,9 @@ packages:
       sha256: b9a0c60e2d4786bbb276ce6606027a99615bf703fa3e0f01911e8c6a656c5161
   original:
     hackage: splitmix-0.1.0.1@sha256:22f9662e7e8b173421872241edd39350078a9ed4bb9e9f503948c5b483c79276,5253
-- completed:
-    subdir: hedgehog
-    name: hedgehog
-    version: 1.0.3
-    git: https://github.com/hedgehogqa/haskell-hedgehog.git
-    pantry-tree:
-      size: 2575
-      sha256: 7e69930fef281dfeb47b2f7c745c26234768e56ffb5490065f607c57146ffbab
-    commit: 03714682586e43b5ddf5c00391035471a6e01238
-  original:
-    subdir: hedgehog
-    git: https://github.com/hedgehogqa/haskell-hedgehog.git
-    commit: 03714682586e43b5ddf5c00391035471a6e01238
-- completed:
-    subdir: hspec-core
-    name: hspec-core
-    version: 2.7.4
-    git: https://github.com/mwotton/hspec
-    pantry-tree:
-      size: 3899
-      sha256: 6ece11ad28a7f122a502e766eb1b3ef950815c2d16babb0ea8744646f1c1bd70
-    commit: cd9012414a93cf08f86e409544d4d3a8f282b507
-  original:
-    subdir: hspec-core
-    git: https://github.com/mwotton/hspec
-    commit: cd9012414a93cf08f86e409544d4d3a8f282b507
 snapshots:
 - completed:
-    size: 532380
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/16.yaml
-    sha256: d6b004b095fe2a0b8b14fbc30014ee97e58843b9c9362ddb9244273dda62649e
-  original: lts-16.16
+    size: 532379
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/16/8.yaml
+    sha256: 2ad3210d2ad35f3176005d68369a18e4d984517bfaa2caade76f28ed0b2e0521
+  original: lts-16.8
