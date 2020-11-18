@@ -28,6 +28,10 @@ dependencies:
 - servant-server # >= 0.17
 - string-conversions
 - time
+- vinyl
+- dependent-sum
+- dependent-map
+- text
 
 ghc-options:
 - -Wall
