@@ -1,5 +1,7 @@
 
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
 {-# OPTIONS_GHC -fno-warn-orphans #-}
@@ -12,7 +14,7 @@ import qualified Post
 
 import Data.Dynamic(toDyn)
 import qualified Roboservant as RS
-
+import Roboservant(Chewy,Breakdown, BuildFrom, Atomic)
 import Test.Hspec
 import Test.Hspec.Core.Spec
 import Data.Void
@@ -44,22 +46,22 @@ spec = do
     describe "posted body" $ do
       it "passes a coverage check using a posted body" $ do
         RS.fuzz @Post.Api Post.server defaultConfig { RS.coverageThreshold = 0.99 } noCheck
-          >>= (`shouldSatisfy` isNothing)        
-          
+          >>= (`shouldSatisfy` isNothing)
+
     describe "seeded" $ do
       shouldFail $
         it "finds an error using information passed in" $
           RS.fuzz @Seeded.Api Seeded.server (defaultConfig{ RS.seed = [toDyn $ Seeded.Seed 1] }) noCheck
             >>= (`shouldSatisfy` isNothing)
-    describe "Foo" $ do            
-      shouldFail $ it "finds an error in a basic app" $
+    describe "Foo" $ do
+      it "finds an error in a basic app" $
         RS.fuzz @Foo.Api Foo.server defaultConfig noCheck
-          >>= (`shouldSatisfy` isNothing)
+          >>= (`shouldSatisfy` isJust)
 
     describe "headers" $ do
-      shouldFail $ it "should find a failure that's dependent on using header info" $ do
+      it "should find a failure that's dependent on using header info" $ do
         RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
-          >>= (`shouldSatisfy` isNothing)
+          >>= (`shouldSatisfy` isJust)
 
   -- -- -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- -- -- could: it's mostly here to show how to test for concurrency problems.
@@ -76,23 +78,27 @@ spec = do
   --             RS.prop_concurrent @UnsafeIO.UnsafeApi unsafeServer []
 
 
-instance RS.Breakdown Foo.Foo where
-  breakdown = pure . toDyn
+deriving via (Chewy Foo.Foo) instance Breakdown Foo.Foo
+deriving via (Atomic Foo.Foo) instance BuildFrom Foo.Foo
+
+deriving via (Chewy Headers.Foo) instance Breakdown Headers.Foo
+deriving via (Atomic Headers.Foo) instance BuildFrom Headers.Foo
+
+deriving via (Chewy Seeded.Seed) instance Breakdown Seeded.Seed
+deriving via (Atomic Seeded.Seed) instance BuildFrom Seeded.Seed
 
 
-instance RS.Breakdown Headers.Foo where
-  breakdown = pure . toDyn
+-- instance RS.BuildFrom Seeded.Seed
 
-instance RS.BuildFrom Foo.Foo
+deriving via (Atomic Void) instance RS.BuildFrom Void
 
-instance RS.BuildFrom Headers.Foo
+deriving via (Atomic Post.FooPost) instance RS.BuildFrom Post.FooPost
+deriving via (Chewy Post.FooPost) instance RS.Breakdown Post.FooPost
 
-instance RS.BuildFrom Seeded.Seed
+-- deriving via (Atomic Void) instance RS.BuildFrom Void
 
-instance RS.BuildFrom Void
-
-instance RS.Breakdown Post.FooPost
-instance RS.BuildFrom Post.FooPost
+-- instance RS.Breakdown Post.FooPost
+-- instance RS.BuildFrom Post.FooPost
 
 
 -- | `shouldFail` allows you to assert that a given `Spec` should contain at least one failing test.

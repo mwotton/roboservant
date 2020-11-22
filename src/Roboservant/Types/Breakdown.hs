@@ -1,18 +1,15 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
 
 module Roboservant.Types.Breakdown where
@@ -33,8 +30,16 @@ type Stash = Map TypeRep (NonEmpty ([Provenance], Dynamic))
 
 class Typeable x => BuildFrom x where
   buildFrom :: Stash -> Maybe (NonEmpty ([Provenance],Dynamic))
-  default buildFrom :: Stash -> Maybe (NonEmpty ([Provenance], Dynamic))
+--  default buildFrom :: Stash -> Maybe (NonEmpty ([Provenance], Dynamic))
+--  buildFrom = Map.lookup (typeRep (Proxy @x))
+
+
+-- | Can't be built up from parts
+newtype Atomic x = Atomic x
+
+instance Typeable x => BuildFrom (Atomic x) where
   buildFrom = Map.lookup (typeRep (Proxy @x))
+
 
   -- (fmap promisedDyn . NEL.toList) . Map.lookup (typeRep (Proxy @x))
 
@@ -47,7 +52,8 @@ class Typeable x => BuildFrom x where
 promisedDyn :: Typeable a => Dynamic -> a
 promisedDyn = fromMaybe (error "internal error, typerep map misconstructed") . fromDynamic
 
-instance BuildFrom Bool
+-- instance BuildFrom Bool
+deriving via (Atomic Bool) instance BuildFrom Bool
 
 instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
   buildFrom dict = Just $ fmap toDyn <$>  options
@@ -58,21 +64,18 @@ instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
 
 class Breakdown x where
   breakdown :: x -> NonEmpty Dynamic
-  default breakdown :: Typeable x => x -> NonEmpty Dynamic
-  breakdown = pure . toDyn
-  
+--  default breakdown :: Typeable x => x -> NonEmpty Dynamic
+--  breakdown = pure . toDyn
+
 -- | Can't break it down any further -- stuck in your teeth, maybe.
 newtype Chewy x = Chewy { unChew :: x }
 
-instance Breakdown () where
-  breakdown = pure . toDyn
+instance Typeable a => Breakdown (Chewy a) where
+  breakdown = pure . toDyn . unChew
 
-instance Breakdown Int where
-  breakdown = pure . toDyn
+deriving via (Chewy ()) instance Breakdown ()
+deriving via (Chewy Int) instance Breakdown Int
 
-
-instance Typeable x => Breakdown (Chewy x) where
-  breakdown x = pure (toDyn x)
 
 --let d = toDyn x in Map.fromList [(dynTypeRep d, pure d)]
 
@@ -83,6 +86,6 @@ instance Typeable x => Breakdown (Chewy x) where
 instance (Typeable a, Breakdown a) => Breakdown [a] where
   breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
 
-instance (BuildFrom a) => BuildFrom [a] -- where
---  breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
-
+instance (BuildFrom a) => BuildFrom [a] where
+  buildFrom = error "fuuuck"
+---  breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
