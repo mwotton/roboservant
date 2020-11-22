@@ -2,8 +2,8 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DerivingStrategies #-}
+
+
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
@@ -22,6 +22,7 @@ import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (TypeRep, Typeable, typeRep)
+import GHC.Generics(Generic)
 
 data Provenance
   = Provenance TypeRep Int
@@ -35,9 +36,18 @@ class Typeable x => BuildFrom x where
 
 
 -- | Can't be built up from parts
-newtype Atomic x = Atomic x
+newtype Atom x = Atom { unAtom :: x }
 
-instance Typeable x => BuildFrom (Atomic x) where
+-- | can be broken down and built up from generic pieces
+newtype Compound x = Compound { unCompound :: x }
+
+instance (Typeable x, Generic x) => BuildFrom (Compound x) where
+  buildFrom = error "buildfrom"
+
+instance (Typeable x, Generic x) => Breakdown (Compound x) where
+  breakdown = error "breakdown"
+
+instance Typeable x => BuildFrom (Atom x) where
   buildFrom = Map.lookup (typeRep (Proxy @x))
 
 
@@ -53,13 +63,13 @@ promisedDyn :: Typeable a => Dynamic -> a
 promisedDyn = fromMaybe (error "internal error, typerep map misconstructed") . fromDynamic
 
 -- instance BuildFrom Bool
-deriving via (Atomic Bool) instance BuildFrom Bool
+deriving via (Atom Bool) instance BuildFrom Bool
 
 instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
   buildFrom dict = Just $ fmap toDyn <$>  options
     where options :: NonEmpty ([Provenance], Maybe x)
           options = ([],Nothing) :|
-                    (maybe [] NEL.toList . fmap (fmap (fmap (Just . promisedDyn @x)))
+                    (maybe [] (NEL.toList . (fmap (fmap (Just . promisedDyn @x))))
                       $ buildFrom @x  dict)
 
 class Breakdown x where
@@ -67,14 +77,11 @@ class Breakdown x where
 --  default breakdown :: Typeable x => x -> NonEmpty Dynamic
 --  breakdown = pure . toDyn
 
--- | Can't break it down any further -- stuck in your teeth, maybe.
-newtype Chewy x = Chewy { unChew :: x }
+instance Typeable a => Breakdown (Atom a) where
+  breakdown = pure . toDyn . unAtom
 
-instance Typeable a => Breakdown (Chewy a) where
-  breakdown = pure . toDyn . unChew
-
-deriving via (Chewy ()) instance Breakdown ()
-deriving via (Chewy Int) instance Breakdown Int
+deriving via (Atom ()) instance Breakdown ()
+deriving via (Atom Int) instance Breakdown Int
 
 
 --let d = toDyn x in Map.fromList [(dynTypeRep d, pure d)]

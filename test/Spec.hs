@@ -1,4 +1,3 @@
-
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DerivingVia #-}
@@ -14,7 +13,7 @@ import qualified Post
 
 import Data.Dynamic(toDyn)
 import qualified Roboservant as RS
-import Roboservant(Chewy,Breakdown, BuildFrom, Atomic)
+import Roboservant(Breakdown, BuildFrom, Atom, Compound)
 import Test.Hspec
 import Test.Hspec.Core.Spec
 import Data.Void
@@ -78,24 +77,24 @@ spec = do
   --             RS.prop_concurrent @UnsafeIO.UnsafeApi unsafeServer []
 
 
-deriving via (Chewy Foo.Foo) instance Breakdown Foo.Foo
-deriving via (Atomic Foo.Foo) instance BuildFrom Foo.Foo
+deriving via (Atom Foo.Foo) instance Breakdown Foo.Foo
+deriving via (Atom Foo.Foo) instance BuildFrom Foo.Foo
 
-deriving via (Chewy Headers.Foo) instance Breakdown Headers.Foo
-deriving via (Atomic Headers.Foo) instance BuildFrom Headers.Foo
+deriving via (Atom Headers.Foo) instance Breakdown Headers.Foo
+deriving via (Atom Headers.Foo) instance BuildFrom Headers.Foo
 
-deriving via (Chewy Seeded.Seed) instance Breakdown Seeded.Seed
-deriving via (Atomic Seeded.Seed) instance BuildFrom Seeded.Seed
+deriving via (Atom Seeded.Seed) instance Breakdown Seeded.Seed
+deriving via (Atom Seeded.Seed) instance BuildFrom Seeded.Seed
 
 
 -- instance RS.BuildFrom Seeded.Seed
 
-deriving via (Atomic Void) instance RS.BuildFrom Void
+deriving via (Atom Void) instance RS.BuildFrom Void
 
-deriving via (Atomic Post.FooPost) instance RS.BuildFrom Post.FooPost
-deriving via (Chewy Post.FooPost) instance RS.Breakdown Post.FooPost
+deriving via (Atom Post.FooPost) instance RS.BuildFrom Post.FooPost
+deriving via (Atom Post.FooPost) instance RS.Breakdown Post.FooPost
 
--- deriving via (Atomic Void) instance RS.BuildFrom Void
+-- deriving via (Atom Void) instance RS.BuildFrom Void
 
 -- instance RS.Breakdown Post.FooPost
 -- instance RS.BuildFrom Post.FooPost
