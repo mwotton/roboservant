@@ -9,6 +9,7 @@ import qualified Seeded
 import qualified Valid
 import qualified Headers
 import qualified Post
+import qualified BuildFrom
 -- import qualified UnsafeIO
 
 import Data.Dynamic(toDyn)
@@ -62,6 +63,13 @@ spec = do
         RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
           >>= (`shouldSatisfy` isJust)
 
+    describe "can build from pieces" $ do
+      it "should find a failure that requires some assembly" $ do
+        RS.fuzz @BuildFrom.Api BuildFrom.server defaultConfig noCheck
+          >>= (`shouldSatisfy` isJust)
+
+
+
   -- -- -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
   -- -- -- could: it's mostly here to show how to test for concurrency problems.
   -- describe "concurrency bugs" $ do
@@ -93,6 +101,12 @@ deriving via (Atom Void) instance RS.BuildFrom Void
 
 deriving via (Atom Post.FooPost) instance RS.BuildFrom Post.FooPost
 deriving via (Atom Post.FooPost) instance RS.Breakdown Post.FooPost
+
+
+deriving via (Compound BuildFrom.Wrapped) instance RS.BuildFrom BuildFrom.Wrapped
+deriving via (Compound BuildFrom.Wrapped) instance RS.Breakdown BuildFrom.Wrapped
+
+
 
 -- deriving via (Atom Void) instance RS.BuildFrom Void
 

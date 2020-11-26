@@ -4,16 +4,14 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE TypeOperators #-}
+
 {-# LANGUAGE UndecidableInstances #-}
 
 module Roboservant.Direct
@@ -26,9 +24,7 @@ module Roboservant.Direct
 where
 
 import Control.Exception.Lifted(throw,handle,Handler(..), Exception,SomeException,SomeAsyncException, catch, catches)
-import Control.Monad(void,replicateM)
 import Control.Monad.State.Strict(MonadState,MonadIO,get,modify',liftIO,runStateT)
-import Control.Monad.Trans.Control(MonadBaseControl)
 import Data.Dynamic (Dynamic, dynApply, dynTypeRep, fromDynamic)
 import Data.Map.Strict(Map)
 import qualified Data.Set as Set
@@ -40,6 +36,7 @@ import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
 import Data.Time.Clock
 import Data.List(sortOn)
+import Control.Arrow(second)
 
 import Roboservant.Types.Breakdown
 import Roboservant.Types
@@ -47,8 +44,7 @@ import Roboservant.Types
     FlattenServer (..),
 --    ReifiedApi,
     ToReifiedApi (..),
-  )
-
+  ))
 data RoboservantException
   = RoboservantException
   { failureReason :: FailureType
@@ -66,7 +62,7 @@ data FailureType
   deriving (Show,Eq)
 
 
-data FuzzOp = FuzzOp 
+data FuzzOp = FuzzOp
   { apiOffset :: ApiOffset
   , provenance :: [Provenance]
   } deriving (Show,Eq)
@@ -95,7 +91,7 @@ data StopReason
 data Report = Report
   { textual :: String
   , rsException :: RoboservantException}
-  deriving (Show)  
+  deriving (Show)
 
 fuzz :: forall api. (FlattenServer api, ToReifiedApi (Endpoints api))
      => Server api
@@ -107,7 +103,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       stash = addToStash seed mempty
       currentRng = mkStdGen rngSeed
 
-  
+
   deadline :: UTCTime <- addUTCTime (fromInteger $ maxRuntime * 1000000) <$> getCurrentTime
   (stopreason, fs ) <- runStateT
     (untilDone (maxReps, deadline) go <* (evaluateCoverage =<< get)) FuzzState{..}
@@ -126,7 +122,9 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       mapM_ print (Set.toList $ Set.fromList $ map apiOffset path)
       putStrLn ""
       putStrLn "types in stash"
-      mapM_ print (map (\x -> (fst x, NEL.length (snd x))) . sortOn (show . fst) . Map.toList $ stash)
+      mapM_
+        (print . second NEL.length)
+        (sortOn (show . fst) . Map.toList stash)
 
   --    evaluateCoverage :: FuzzState -> m ()
     evaluateCoverage f@FuzzState{..}
@@ -134,10 +132,10 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       | otherwise = do
           displayDiagnostics f
           throw $ RoboservantException (InsufficientCoverage coverage) Nothing f
-      where hitRoutes = (fromIntegral . Set.size . Set.fromList $ map apiOffset path)
-            totalRoutes = (fromIntegral routeCount)
+      where hitRoutes = fromIntegral . Set.size . Set.fromList $ map apiOffset path
+            totalRoutes = fromIntegral routeCount
             coverage = hitRoutes / totalRoutes
-        
+
 
     untilDone :: MonadIO m => (Integer,UTCTime) -> m a -> m StopReason
     untilDone (0,_) _ =  pure HitMaxIterations
@@ -148,10 +146,10 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
         else do
           action
           untilDone (n-1, deadline) action
-    
+
     reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
     routeCount = length reifiedApi
-    
+
     elementOrFail :: (MonadState FuzzState m, MonadIO m)
                   => [a] -> m a
     elementOrFail [] = liftIO . throw . RoboservantException NoPossibleMoves Nothing  =<< get
@@ -175,7 +173,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
         options :: FuzzState -> [(ApiOffset, Dynamic, [NEL.NonEmpty ([Provenance], Dynamic)])]
         options FuzzState{..} =
           mapMaybe
-            ( \(offset, (argreps, dynCall)) -> (offset,dynCall,) <$> do
+            ( \(offset, (argreps, dynCall)) -> (offset,dynCall,) <$>
                 mapM (\(_tr,bf) -> bf stash ) argreps
             )
             reifiedApi
@@ -196,19 +194,19 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
                ,"state"
                ,show st]
       -- liftIO $ putStrLn showable
-      
+
       case func of
         Nothing -> error ("all screwed up 1: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
-        Just (f') -> do
+        Just f' -> do
           -- liftIO $ print
           case fromDynamic f' of
             Nothing -> error ("all screwed up 2: " <> maybe ("nothing: " <> show showable) (show . dynTypeRep) func)
-            Just (f) -> liftIO f >>= \case
+            Just f -> liftIO f >>= \case
               -- parameterise this
               Left (serverError :: ServerError) ->
                 case errHTTPCode serverError of
                   500 -> throw serverError
-                  _ -> do
+                  _ ->
                     liftIO $ print ("ignoring non-500 error" , serverError)
 
               Right (dyn :: NEL.NonEmpty Dynamic) -> do

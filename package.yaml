@@ -49,4 +49,4 @@ tests:
     - aeson
     - hspec
     - hspec-core
-
+    - http-api-data
