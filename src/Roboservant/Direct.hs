@@ -126,21 +126,10 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
 
 
   deadline :: UTCTime <- addUTCTime (fromInteger $ maxRuntime * 1000000) <$> getCurrentTime
-  -- either we time out without finding an error, which is fine, or we find an error
-  -- and throw an exception that propagates through this.
-
   (stopreason, fs ) <- runStateT
     (untilDone (maxReps, deadline) go <* (evaluateCoverage =<< get)) FuzzState{..}
+  print stopreason
   pure Nothing
-  -- mapM_ (print . (\(offset, (args, dyn) ) -> (offset, map fst args, dyn))) reifiedApi
-
-
-  -- void $ timeout (maxRuntime * 1000000) ( execStateT (replicateM maxReps go) FuzzState{..})
-  -- forM_ reifiedApi $ \(offset, ReifiedEndpoint{..}) ->
-  --   print (
-  --       offset
-  --     , recordToList' (\(tr :*: _) -> R.SomeTypeRep tr) reArguments
-  --     )
   where
     -- something less terrible later
     formatException :: RoboservantException -> Report
@@ -261,11 +250,9 @@ addToStash :: [Dynamic]
 addToStash result stash =
   foldr (\(Dynamic tr x) (Stash dict) -> Stash $
       DM.insertWith renumber tr (StashValue (([Provenance (R.SomeTypeRep tr) 0],x):|[])) dict
-      -- in  DM.insertWith renumber _ (pure ([Provenance tr 0],x)) dict
     )
     stash
     result
--- Map.insertWith (flip (<>)) (dynTypeRep result) (_pure result) stash   })
   where
     renumber :: StashValue a
              -> StashValue a

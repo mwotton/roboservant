@@ -22,12 +22,11 @@ module Roboservant.Types.ReifiedApi where
 
 import Control.Monad.Except (runExceptT)
 import Data.Bifunctor
-import Data.Dependent.Sum
-import Data.Dynamic (Dynamic, toDyn)
-import Data.Function ((&))
+-- import Data.Dependent.Sum
+import Data.Dynamic (Dynamic)
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty)
-import Data.Typeable (TypeRep, Typeable, typeRep)
+import Data.Typeable (Typeable)
 import GHC.Generics ((:*:)(..))
 import GHC.TypeLits (Symbol)
 import Roboservant.Types.Breakdown

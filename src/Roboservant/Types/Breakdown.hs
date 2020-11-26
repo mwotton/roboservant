@@ -23,10 +23,8 @@ import Data.Dynamic (Dynamic, fromDynamic, toDyn)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
-import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
-import Data.Proxy (Proxy (..))
-import Data.Typeable (TypeRep, Typeable, typeRep)
+import Data.Typeable (Typeable)
 import qualified Data.Dependent.Map as DM
 import Data.Dependent.Map (DMap)
 import qualified Type.Reflection as R
@@ -79,7 +77,7 @@ class Breakdown x where
   breakdown :: x -> NonEmpty Dynamic
   default breakdown :: Typeable x => x -> NonEmpty Dynamic
   breakdown = pure . toDyn
-  
+
 -- | Can't break it down any further -- stuck in your teeth, maybe.
 newtype Chewy x = Chewy { unChew :: x }
 
@@ -104,4 +102,3 @@ instance (Typeable a, Breakdown a) => Breakdown [a] where
 
 instance (BuildFrom a) => BuildFrom [a] -- where
 --  breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
-
