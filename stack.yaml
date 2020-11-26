@@ -1,4 +1,5 @@
-resolver: lts-16.8 #lts-16.16
+# nb: 16.8 doesn't work because the version of servant is too old to have FoldLenient', fixme.
+resolver: lts-16.16
 packages:
 - .
 
@@ -8,3 +9,7 @@ extra-deps:
 - dependent-sum-0.7.1.0
 - constraints-extras-0.3.0.2
 - dependent-map-0.4.0.0
+- servant-0.18.2
+- servant-client-0.18.2
+- servant-client-core-0.18.2
+- servant-server-0.18.2

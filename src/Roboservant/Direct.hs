@@ -73,7 +73,6 @@ data RoboservantException
   = RoboservantException
   { failureReason :: FailureType
   , serverException :: Maybe SomeException
-  , something :: Int
   , fuzzState :: FuzzState
   } deriving (Show)
 
@@ -151,9 +150,11 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       mapM_ print (Set.toList $ Set.fromList $ map apiOffset path)
       putStrLn ""
       putStrLn "types in stash"
-      mapM_
-        (print . second NEL.length)
-        (sortOn (show . fst) . Map.toList stash)
+      DM.forWithKey_ (getStash stash) $ \k v ->
+        print (k,NEL.length $ getStashValue v)
+      -- mapM_
+      --   (print . second NEL.length)
+      --   (sortOn (show . fst) $ Map.toList $ getStash stash)
 
   --    evaluateCoverage :: FuzzState -> m ()
     evaluateCoverage f@FuzzState{..}

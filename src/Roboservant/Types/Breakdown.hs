@@ -25,10 +25,7 @@ import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
 import Data.Maybe (fromMaybe)
-import Data.Proxy (Proxy (..))
-import Data.Typeable (TypeRep, Typeable, typeRep)
 import GHC.Generics(Generic)
-import qualified GHC.Generics as Generics
 import Data.Typeable (Typeable)
 import qualified Data.Dependent.Map as DM
 import Data.Dependent.Map (DMap)
@@ -42,9 +39,6 @@ data Provenance
 
 class Breakdown x where
   breakdown :: x -> NonEmpty Dynamic
---  default breakdown :: Typeable x => x -> NonEmpty Dynamic
---  breakdown = pure . toDyn
-
 
 -- | Can't be built up from parts
 newtype Atom x = Atom { unAtom :: x }
@@ -55,15 +49,15 @@ newtype Compound x = Compound { unCompound :: x }
 -- | so, this is quite tricky. we need to witness the structure of `x`, but
 --   we don't have an example of it yet. not entirely sure where to go.
 instance (Typeable x, Generic x) => BuildFrom (Compound x) where
-  buildFrom stash = error "oops"
+  buildFrom _stash = error "oops"
 --   breakdown = Map.fromListWith (<>) . fmap ((dynTypeRep &&& (\x -> NEL.fromList [x])) . toDyn . Generics.to) . _ . Generics.from
 
--- | this should be a bit more tractable.
-instance (Typeable x, Generic x) => Breakdown (Compound x) where
-  breakdown x = _ . Generics.from . unCompound $ x
+-- -- | this should be a bit more tractable.
+-- instance (Typeable x, Generic x) => Breakdown (Compound x) where
+--   breakdown x = _ . Generics.from . unCompound $ x
 
 instance Typeable x => BuildFrom (Atom x) where
-  buildFrom = Map.lookup (typeRep (Proxy @x))
+  buildFrom = DM.lookup R.typeRep . getStash
 
 newtype StashValue a = StashValue { getStashValue :: NonEmpty ([Provenance], a) }
   deriving (Functor, Show)
@@ -79,21 +73,11 @@ instance Show Stash where
 
 class Typeable x => BuildFrom (x :: Type) where
   buildFrom :: Stash -> Maybe (StashValue x)
-  default buildFrom :: Stash -> Maybe (StashValue x)
-  buildFrom = DM.lookup R.typeRep . getStash
-
-  -- (fmap promisedDyn . NEL.toList) . Map.lookup (typeRep (Proxy @x))
-
-
--- baseLookup :: TypeRep -> Stash -> Maybe (NonEmpty ([Provenance], Dynamic))
--- baseLookup tr mmm = -- Map.lookup (typeRep (Proxy @x)) mmm
---   Map.lookup tr mmm
 
 -- | only use this when we are using the internal typerep map.
 promisedDyn :: Typeable a => Dynamic -> a
 promisedDyn = fromMaybe (error "internal error, typerep map misconstructed") . fromDynamic
 
--- instance BuildFrom Bool
 deriving via (Atom Bool) instance BuildFrom Bool
 
 instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
