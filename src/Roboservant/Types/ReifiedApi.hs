@@ -2,10 +2,13 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TupleSections #-}
@@ -18,45 +21,76 @@ module Roboservant.Types.ReifiedApi where
 
 
 import Control.Monad.Except (runExceptT)
+import Data.Bifunctor
+import Data.Dependent.Sum
 import Data.Dynamic (Dynamic, toDyn)
 import Data.Function ((&))
+import Data.Kind
+import Data.List.NonEmpty (NonEmpty)
 import Data.Typeable (TypeRep, Typeable, typeRep)
+import GHC.Generics ((:*:)(..))
 import GHC.TypeLits (Symbol)
+import Roboservant.Types.Breakdown
+import Roboservant.Types.FlattenServer
 import Servant
 import Servant.API.Modifiers(FoldRequired,FoldLenient)
-import Roboservant.Types.FlattenServer
-import Roboservant.Types.Breakdown
-import Data.List.NonEmpty (NonEmpty)
+import qualified Data.Text as T
+import qualified Data.Vinyl as V
+import qualified Data.Vinyl.Curry as V
+import qualified Type.Reflection as R
 
 
 newtype ApiOffset = ApiOffset Int
   deriving (Eq, Show, Ord)
   deriving newtype (Enum, Num)
 
-type ReifiedEndpoint = ([(TypeRep
-                         , Stash -> Maybe (NonEmpty ([Provenance], Dynamic)))]
-                       , Dynamic)
+type TypedF = (:*:) R.TypeRep
+
+newtype Argument a = Argument
+    { getArgument :: Stash -> Maybe (StashValue a)
+    }
+
+data ReifiedEndpoint = forall as. (V.RecordToList as, V.RMap as) => ReifiedEndpoint
+    { reArguments    :: V.Rec (TypedF Argument) as
+    , reEndpointFunc :: V.Curried as (IO (Either ServerError (NonEmpty Dynamic)))
+    }
 
 type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
 
+tagType :: Typeable a => f a -> TypedF f a
+tagType = (R.typeRep :*:)
 
 class ToReifiedApi (endpoints :: [*]) where
   toReifiedApi :: Bundled endpoints -> Proxy endpoints -> ReifiedApi
 
-class ToReifiedEndpoint (endpoint :: *) where
-  toReifiedEndpoint :: Dynamic -> Proxy endpoint -> ReifiedEndpoint
+class ( V.Curried (EndpointArgs endpoint) (Handler (EndpointRes endpoint)) ~ Server endpoint
+      , V.RecordToList (EndpointArgs endpoint)
+      , V.RMap (EndpointArgs endpoint)
+      ) => ToReifiedEndpoint (endpoint :: *) where
+  type EndpointArgs endpoint :: [Type]
+  type EndpointRes endpoint :: Type
+
+  reifiedEndpointArguments :: V.Rec (TypedF Argument) (EndpointArgs endpoint)
 
 instance ToReifiedApi '[] where
   toReifiedApi NoEndpoints _ = []
 
 instance
-  (Typeable (Normal (ServerT endpoint Handler)), NormalizeFunction (ServerT endpoint Handler), ToReifiedEndpoint endpoint, ToReifiedApi endpoints, Typeable (ServerT endpoint Handler)) =>
+  ( Typeable (EndpointRes endpoint)
+  , NormalizeFunction (ServerT endpoint Handler)
+  , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either ServerError (NonEmpty Dynamic)))
+  , ToReifiedEndpoint endpoint
+  , ToReifiedApi endpoints, Typeable (ServerT endpoint Handler)
+  ) =>
   ToReifiedApi (endpoint : endpoints)
   where
   toReifiedApi (endpoint `AnEndpoint` endpoints) _ =
-    (0,) (toReifiedEndpoint (toDyn (normalize endpoint)) (Proxy @endpoint))
-      : map
-        (\(n, x) -> (n + 1, x))
+    (0, ReifiedEndpoint
+         { reArguments    = reifiedEndpointArguments @endpoint
+         , reEndpointFunc = normalize endpoint
+         }
+    )
+      : (map . first) (+1)
         (toReifiedApi endpoints (Proxy @endpoints))
 
 class NormalizeFunction m where
@@ -73,35 +107,37 @@ instance (Typeable x, Breakdown x) => NormalizeFunction (Handler x) where
     Left serverError -> pure (Left serverError)
     Right x -> pure $ Right $ breakdown x
 
---      pure (Right (typeRep (Proxy @x), toDyn x))
-
 instance
   (Typeable responseType, Breakdown responseType) =>
   ToReifiedEndpoint (Verb method statusCode contentTypes responseType)
   where
-  toReifiedEndpoint endpoint _ = id
-    ([],  endpoint)
+  type EndpointArgs (Verb method statusCode contentTypes responseType) = '[]
+  type EndpointRes (Verb method statusCode contentTypes responseType) = responseType
+  reifiedEndpointArguments = V.RNil
 
 instance
   (ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint ((x :: Symbol) :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
+  type EndpointArgs ((x :: Symbol) :> endpoint) = EndpointArgs endpoint
+  type EndpointRes ((x :: Symbol) :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments = reifiedEndpointArguments @endpoint
 
 instance
   (ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (Description s :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
+  type EndpointArgs (Description s :> endpoint) = EndpointArgs endpoint
+  type EndpointRes (Description s :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments = reifiedEndpointArguments @endpoint
 
 instance
   (ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (Summary s :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
+  type EndpointArgs (Summary s :> endpoint) = EndpointArgs endpoint
+  type EndpointRes (Summary s :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments = reifiedEndpointArguments @endpoint
 
 instance
   (Typeable requestType
@@ -109,58 +145,57 @@ instance
   ,ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (QueryFlag name :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result) -> ((typeRep (Proxy @Bool),buildFrom @Bool) : args, result)
+  type EndpointArgs (QueryFlag name :> endpoint) = Bool ': EndpointArgs endpoint
+  type EndpointRes (QueryFlag name :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments = tagType (Argument (buildFrom @Bool)) V.:& reifiedEndpointArguments @endpoint
+
+type IfLenient s mods t  = If (FoldLenient mods) (Either s t) t
+type IfRequired mods t = If (FoldRequired mods) t (Maybe t)
+type IfRequiredLenient s mods t = IfRequired mods (IfLenient s mods t)
 
 instance
-  ( Typeable (If (FoldRequired mods) paramType (Maybe paramType))
-  , BuildFrom (If (FoldRequired mods) paramType (Maybe paramType))
+  ( BuildFrom (IfRequiredLenient T.Text mods paramType)
   , ToReifiedEndpoint endpoint
-  , SBoolI (FoldRequired mods)) =>
+  ) =>
   ToReifiedEndpoint (QueryParam' mods name paramType :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result) ->
-          ((typeRep (Proxy @(If (FoldRequired mods) paramType (Maybe paramType)))
-           ,buildFrom @(If (FoldRequired mods) paramType (Maybe paramType)))
-            : args, result)
+  type EndpointArgs (QueryParam' mods name paramType :> endpoint) = IfRequiredLenient T.Text mods paramType ': EndpointArgs endpoint
+  type EndpointRes (QueryParam' mods name paramType :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments =
+   tagType (Argument (buildFrom @(IfRequiredLenient T.Text mods paramType)))
+      V.:& reifiedEndpointArguments @endpoint
+
 
 instance
-  ( Typeable (If (FoldRequired mods) headerType (Maybe headerType))
-  , BuildFrom (If (FoldRequired mods) headerType (Maybe headerType))
+  ( BuildFrom (IfRequiredLenient T.Text mods headerType)
   , ToReifiedEndpoint endpoint
-  , SBoolI (FoldRequired mods)) =>
+  ) =>
   ToReifiedEndpoint (Header' mods headerName headerType :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result) -> ((typeRep (Proxy @(If (FoldRequired mods) headerType (Maybe headerType)))
-                            ,buildFrom  @(If (FoldRequired mods) headerType (Maybe headerType)))
-
-                            : args, result)
+  type EndpointArgs (Header' mods headerName headerType :> endpoint) = IfRequiredLenient T.Text mods headerType ': EndpointArgs endpoint
+  type EndpointRes  (Header' mods headerName headerType :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments =
+   tagType (Argument (buildFrom @(IfRequiredLenient T.Text mods headerType)))
+      V.:& reifiedEndpointArguments @endpoint
 
 instance
-  ( Typeable captureType
-  , BuildFrom captureType
+  ( BuildFrom (IfLenient String mods captureType)
   , ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (Capture' mods name captureType :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result) -> ((typeRep (Proxy @captureType)
-                            ,buildFrom @captureType)
-                            : args, result)
+  type EndpointArgs (Capture' mods name captureType :> endpoint) = IfLenient String mods captureType ': EndpointArgs endpoint
+  type EndpointRes  (Capture' mods name captureType :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments =
+   tagType (Argument (buildFrom @(IfLenient String mods captureType)))
+      V.:& reifiedEndpointArguments @endpoint
 
 instance
-  ( Typeable (If (FoldLenient mods) (Either String requestType) requestType)
-  , BuildFrom (If (FoldLenient mods) (Either String requestType) requestType)
-  , ToReifiedEndpoint endpoint, SBoolI (FoldLenient mods)) =>
+  ( BuildFrom (IfLenient String mods requestType)
+  , ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (ReqBody' mods contentTypes requestType :> endpoint)
   where
-  toReifiedEndpoint endpoint _ =
-    toReifiedEndpoint endpoint (Proxy @endpoint)
-      & \(args, result) -> ((typeRep (Proxy @(If (FoldLenient mods) (Either String requestType) requestType))
-                            ,buildFrom @(If (FoldLenient mods) (Either String requestType) requestType))
-                            : args, result)
+  type EndpointArgs (ReqBody' mods contentTypes requestType :> endpoint) = IfLenient String mods requestType ': EndpointArgs endpoint
+  type EndpointRes  (ReqBody' mods contentTypes requestType :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments =
+   tagType (Argument (buildFrom @(IfLenient String mods requestType)))
+      V.:& reifiedEndpointArguments @endpoint
