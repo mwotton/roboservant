@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4774250c208a2100460b0df7518257286ca38d8612b517ddcbf3e37678b598cf
+-- hash: 134cfee817f86824342ecabc02ca2b48ec67539b75581c1954b95a9f9128e5a4
 
 name:           roboservant
 version:        0.1.0.2
@@ -13,8 +13,6 @@ description:    Please see the README on GitHub at <https://github.com/mwotton/r
 category:       Web
 homepage:       https://github.com/mwotton/roboservant#readme
 bug-reports:    https://github.com/mwotton/roboservant/issues
-author:         Mark Wotton, Samuel Schlesinger
-maintainer:     mwotton@gmail.com
 copyright:      2020 Mark Wotton, Samuel Schlesinger
 license:        BSD3
 license-file:   LICENSE
@@ -44,6 +42,8 @@ library
       base >=4.7 && <5
     , bytestring
     , containers
+    , dependent-map
+    , dependent-sum
     , lifted-base
     , monad-control
     , mtl
@@ -53,7 +53,9 @@ library
     , servant-flatten
     , servant-server
     , string-conversions
+    , text
     , time
+    , vinyl
   default-language: Haskell2010
 
 test-suite roboservant-test
@@ -76,6 +78,8 @@ test-suite roboservant-test
     , base >=4.7 && <5
     , bytestring
     , containers
+    , dependent-map
+    , dependent-sum
     , hspec
     , hspec-core
     , http-api-data
@@ -89,5 +93,7 @@ test-suite roboservant-test
     , servant-flatten
     , servant-server
     , string-conversions
+    , text
     , time
+    , vinyl
   default-language: Haskell2010

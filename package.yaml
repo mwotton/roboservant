@@ -2,8 +2,6 @@ name:                roboservant
 version:             0.1.0.2
 github:              "mwotton/roboservant"
 license:             BSD3
-author:              "Mark Wotton, Samuel Schlesinger"
-maintainer:          "mwotton@gmail.com"
 copyright:           "2020 Mark Wotton, Samuel Schlesinger"
 synopsis:            Automatic session-aware servant testing
 category:            Web
@@ -27,6 +25,10 @@ dependencies:
 - servant-flatten
 - servant-server # >= 0.17
 - string-conversions
+- vinyl
+- dependent-sum
+- dependent-map
+- text
 - time
 
 ghc-options:

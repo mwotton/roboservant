@@ -2,10 +2,16 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE StandaloneDeriving #-}
-
-
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE DefaultSignatures #-}
+{-# LANGUAGE DeriveFunctor #-}
+{-# LANGUAGE DerivingStrategies #-}
+{-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE GADTs #-}
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
@@ -18,29 +24,26 @@ import Data.Dynamic (Dynamic, fromDynamic, toDyn)
 import Data.List.NonEmpty (NonEmpty(..))
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
-import Data.Map.Strict (Map)
 import Data.Maybe (fromMaybe)
 import Data.Proxy (Proxy (..))
 import Data.Typeable (TypeRep, Typeable, typeRep)
 import GHC.Generics(Generic)
 import qualified GHC.Generics as Generics
+import Data.Typeable (Typeable)
+import qualified Data.Dependent.Map as DM
+import Data.Dependent.Map (DMap)
+import qualified Type.Reflection as R
+import Data.Dependent.Sum
+import Data.Kind
 
 data Provenance
-  = Provenance TypeRep Int
+  = Provenance R.SomeTypeRep Int
   deriving (Show,Eq)
-type Stash = Map TypeRep (NonEmpty ([Provenance], Dynamic))
-
 
 class Breakdown x where
   breakdown :: x -> NonEmpty Dynamic
 --  default breakdown :: Typeable x => x -> NonEmpty Dynamic
 --  breakdown = pure . toDyn
-
-class Typeable x => BuildFrom x where
-  buildFrom :: Stash -> Maybe (NonEmpty ([Provenance],Dynamic))
-
---  default buildFrom :: Stash -> Maybe (NonEmpty ([Provenance], Dynamic))
---  buildFrom = Map.lookup (typeRep (Proxy @x))
 
 
 -- | Can't be built up from parts
@@ -62,6 +65,22 @@ instance (Typeable x, Generic x) => Breakdown (Compound x) where
 instance Typeable x => BuildFrom (Atom x) where
   buildFrom = Map.lookup (typeRep (Proxy @x))
 
+newtype StashValue a = StashValue { getStashValue :: NonEmpty ([Provenance], a) }
+  deriving (Functor, Show)
+
+-- wrap in newtype to give a custom Show instance, since the normal
+-- instance for DMap is not happy since StashValue needs Show a to show
+newtype Stash = Stash { getStash :: DMap R.TypeRep StashValue }
+  deriving (Semigroup, Monoid)
+
+instance Show Stash where
+    showsPrec i (Stash x) = showsPrec i $
+      Map.fromList . map (\(tr :=> StashValue vs) -> (R.SomeTypeRep tr, fmap fst vs)) $ DM.toList x
+
+class Typeable x => BuildFrom (x :: Type) where
+  buildFrom :: Stash -> Maybe (StashValue x)
+  default buildFrom :: Stash -> Maybe (StashValue x)
+  buildFrom = DM.lookup R.typeRep . getStash
 
   -- (fmap promisedDyn . NEL.toList) . Map.lookup (typeRep (Proxy @x))
 
@@ -78,17 +97,18 @@ promisedDyn = fromMaybe (error "internal error, typerep map misconstructed") . f
 deriving via (Atom Bool) instance BuildFrom Bool
 
 instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
-  buildFrom dict = Just $ fmap toDyn <$>  options
-    where options :: NonEmpty ([Provenance], Maybe x)
-          options = ([],Nothing) :|
-                    (maybe [] (NEL.toList . (fmap (fmap (Just . promisedDyn @x))))
-                      $ buildFrom @x  dict)
-
-instance Typeable a => Breakdown (Atom a) where
-  breakdown = pure . toDyn . unAtom
+  buildFrom dict = Just options
+    where options :: StashValue (Maybe x)
+          options = StashValue $
+            ([],Nothing) :|
+              (maybe [] (NEL.toList . getStashValue . fmap Just) $ buildFrom @x dict
+              )
 
 deriving via (Atom ()) instance Breakdown ()
 deriving via (Atom Int) instance Breakdown Int
+
+instance Typeable a => Breakdown (Atom a) where
+  breakdown = pure . toDyn . unAtom
 
 
 instance (Typeable a, Breakdown a) => Breakdown [a] where
