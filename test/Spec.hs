@@ -12,12 +12,10 @@ import qualified Seeded
 import qualified Valid
 import qualified Headers
 import qualified Post
-import qualified BuildFrom
--- import qualified UnsafeIO
+import Test.Hspec.Core.Spec
 
 import Data.Dynamic(toDyn)
 import qualified Roboservant as RS
-import Roboservant(Breakdown, BuildFrom, Atom, Compound)
 import Test.Hspec
 import Data.Void
 import Data.Maybe
@@ -29,7 +27,13 @@ noCheck :: IO ()
 noCheck = pure ()
 
 defaultConfig :: RS.Config
-defaultConfig = RS.Config [] 1 1000 1 0
+defaultConfig = RS.Config
+                { RS.seed = []
+                , RS.maxRuntime = 0.5
+                , RS.maxReps = 1000
+                , RS.rngSeed = 0
+                , RS.coverageThreshold = 0
+                }
 
 spec :: Spec
 spec = do
@@ -67,7 +71,7 @@ spec = do
 
     -- describe "can build from pieces" $ do
     --   it "should find a failure that requires some assembly" $ do
-    --     RS.fuzz @BuildFrom.Api BuildFrom.server defaultConfig noCheck
+    --     RS.fuzz @RS.BuildFrom.Api RS.BuildFrom.server defaultConfig noCheck
     --       >>= (`shouldSatisfy` isJust)
 
 
@@ -87,30 +91,30 @@ spec = do
   --             RS.prop_concurrent @UnsafeIO.UnsafeApi unsafeServer []
 
 
-deriving via (Atom Foo.Foo) instance Breakdown Foo.Foo
-deriving via (Atom Foo.Foo) instance BuildFrom Foo.Foo
+deriving via (RS.Atom Foo.Foo) instance RS.Breakdown Foo.Foo
+deriving via (RS.Atom Foo.Foo) instance RS.BuildFrom Foo.Foo
 
-deriving via (Atom Headers.Foo) instance Breakdown Headers.Foo
-deriving via (Atom Headers.Foo) instance BuildFrom Headers.Foo
+deriving via (RS.Atom Headers.Foo) instance RS.Breakdown Headers.Foo
+deriving via (RS.Atom Headers.Foo) instance RS.BuildFrom Headers.Foo
 
-deriving via (Atom Seeded.Seed) instance Breakdown Seeded.Seed
-deriving via (Atom Seeded.Seed) instance BuildFrom Seeded.Seed
+deriving via (RS.Atom Seeded.Seed) instance RS.Breakdown Seeded.Seed
+deriving via (RS.Atom Seeded.Seed) instance RS.BuildFrom Seeded.Seed
 
 
 -- instance RS.BuildFrom Seeded.Seed
 
-deriving via (Atom Void) instance RS.BuildFrom Void
+deriving via (RS.Atom Void) instance RS.BuildFrom Void
 
-deriving via (Atom Post.FooPost) instance RS.BuildFrom Post.FooPost
-deriving via (Atom Post.FooPost) instance RS.Breakdown Post.FooPost
-
-
---deriving via (Compound BuildFrom.Wrapped) instance RS.BuildFrom BuildFrom.Wrapped
---deriving via (Compound BuildFrom.Wrapped) instance RS.Breakdown BuildFrom.Wrapped
+deriving via (RS.Atom Post.FooPost) instance RS.BuildFrom Post.FooPost
+deriving via (RS.Atom Post.FooPost) instance RS.Breakdown Post.FooPost
 
 
+--deriving via (Compound RS.BuildFrom.Wrapped) instance RS.BuildFrom RS.BuildFrom.Wrapped
+--deriving via (Compound RS.BuildFrom.Wrapped) instance RS.Breakdown RS.BuildFrom.Wrapped
 
--- deriving via (Atom Void) instance RS.BuildFrom Void
+
+
+-- deriving via (RS.Atom Void) instance RS.BuildFrom Void
 
 -- instance RS.Breakdown Post.FooPost
 -- instance RS.BuildFrom Post.FooPost

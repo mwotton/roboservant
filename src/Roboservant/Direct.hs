@@ -102,7 +102,7 @@ data FuzzOp
 data Config
   = Config
       { seed :: [Dynamic],
-        maxRuntime :: Integer, -- seconds to test for
+        maxRuntime :: Double, -- seconds to test for
         maxReps :: Integer,
         rngSeed :: Int,
         coverageThreshold :: Double
@@ -145,7 +145,7 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
   let path = []
       stash = addToStash seed mempty
       currentRng = mkStdGen rngSeed
-  deadline :: UTCTime <- addUTCTime (fromInteger $ maxRuntime * 1000000) <$> getCurrentTime
+  deadline :: UTCTime <- addUTCTime (realToFrac $ maxRuntime * 1000000) <$> getCurrentTime
   (stopreason, _fs) <-
     runStateT
       (untilDone (maxReps, deadline) go <* (evaluateCoverage =<< get))
