@@ -3,6 +3,9 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 import qualified Foo
 import qualified Seeded
@@ -16,7 +19,6 @@ import Data.Dynamic(toDyn)
 import qualified Roboservant as RS
 import Roboservant(Breakdown, BuildFrom, Atom, Compound)
 import Test.Hspec
-import Test.Hspec.Core.Spec
 import Data.Void
 import Data.Maybe
 

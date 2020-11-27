@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 134cfee817f86824342ecabc02ca2b48ec67539b75581c1954b95a9f9128e5a4
+-- hash: 6420e658218cfbfe27ae6037534f3e63a37fb1c9dfbd1a48c5f5e435d959a5af
 
 name:           roboservant
 version:        0.1.0.2
@@ -31,7 +31,9 @@ library
       Roboservant.Direct
       Roboservant.Types
       Roboservant.Types.Breakdown
+      Roboservant.Types.BuildFrom
       Roboservant.Types.FlattenServer
+      Roboservant.Types.Internal
       Roboservant.Types.ReifiedApi
   other-modules:
       Paths_roboservant

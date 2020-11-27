@@ -1,5 +1,5 @@
 module Roboservant (module Roboservant.Direct
-                   ,module Roboservant.Types.Breakdown) where
+                   ,module Roboservant.Types) where
 
 import Roboservant.Direct
-import Roboservant.Types.Breakdown
+import Roboservant.Types
