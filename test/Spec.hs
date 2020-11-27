@@ -1,6 +1,10 @@
 
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
+
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 import qualified Foo
 import qualified Seeded
@@ -67,10 +71,8 @@ instance RS.Breakdown Foo.Foo where
 instance RS.Breakdown Headers.Foo where
   breakdown = pure . toDyn
 
-instance RS.BuildFrom Foo.Foo
 
-instance RS.BuildFrom Headers.Foo
-
-instance RS.BuildFrom Seeded.Seed
-
-instance RS.BuildFrom Void
+deriving via (RS.Atom Void) instance RS.BuildFrom Void
+deriving via (RS.Atom Foo.Foo) instance RS.BuildFrom Foo.Foo
+deriving via (RS.Atom Headers.Foo) instance RS.BuildFrom Headers.Foo
+deriving via (RS.Atom Seeded.Seed) instance RS.BuildFrom Seeded.Seed
