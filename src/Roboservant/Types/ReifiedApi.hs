@@ -29,7 +29,9 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Typeable (Typeable)
 import GHC.Generics ((:*:)(..))
 import GHC.TypeLits (Symbol)
+import Roboservant.Types.Internal
 import Roboservant.Types.Breakdown
+import Roboservant.Types.BuildFrom
 import Roboservant.Types.FlattenServer
 import Servant
 import Servant.API.Modifiers(FoldRequired,FoldLenient)
