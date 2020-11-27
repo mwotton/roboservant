@@ -56,6 +56,13 @@ instance (Typeable x, Generic x) => BuildFrom (Compound x) where
 -- instance (Typeable x, Generic x) => Breakdown (Compound x) where
 --   breakdown x = _ . Generics.from . unCompound $ x
 
+instance Typeable x => Breakdown (Atom x) where
+  breakdown = pure . toDyn
+
+-- instance Typeable a => Breakdown (Atom a) where
+--   breakdown = pure . toDyn . unAtom
+
+
 instance Typeable x => BuildFrom (Atom x) where
   buildFrom = DM.lookup R.typeRep . getStash
 
@@ -91,8 +98,6 @@ instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
 deriving via (Atom ()) instance Breakdown ()
 deriving via (Atom Int) instance Breakdown Int
 
-instance Typeable a => Breakdown (Atom a) where
-  breakdown = pure . toDyn . unAtom
 
 
 instance (Typeable a, Breakdown a) => Breakdown [a] where

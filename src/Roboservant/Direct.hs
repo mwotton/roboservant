@@ -132,7 +132,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       stash = addToStash seed mempty
       currentRng = mkStdGen rngSeed
 
-
+  print ("Initial seed", seed, stash)
   deadline :: UTCTime <- addUTCTime (fromInteger $ maxRuntime * 1000000) <$> getCurrentTime
   (stopreason, fs ) <- runStateT
     (untilDone (maxReps, deadline) go <* (evaluateCoverage =<< get)) FuzzState{..}
@@ -151,7 +151,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
       putStrLn ""
       putStrLn "types in stash"
       DM.forWithKey_ (getStash stash) $ \k v ->
-        print (k,NEL.length $ getStashValue v)
+        print (NEL.length $ getStashValue v)
       -- mapM_
       --   (print . second NEL.length)
       --   (sortOn (show . fst) $ Map.toList $ getStash stash)
@@ -231,7 +231,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
           -> V.Rec (TypedF V.Identity) as
           -> m ()
     execute fuzzop func args = do
-      liftIO $ print fuzzop
+      (liftIO . print . (fuzzop,) . stash ) =<< get
       st <- get
       let showable = unlines $ ("args":map show argTypes)
             <> ["fuzzop"
@@ -239,8 +239,8 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
                -- ,"dyncall"
                -- ,show (dynTypeRep dyncall)
                ,"state"
-               ,show st]
-      liftIO $ putStrLn showable
+               ]
+      -- liftIO $ putStrLn showable
       liftIO (V.runcurry' func argVals) >>= \case
         -- parameterise this
         Left (serverError :: ServerError) ->
@@ -249,7 +249,7 @@ fuzz server Config{..} checker = handle (pure . Just . formatException) $ do
             _ -> do
               liftIO $ print ("ignoring non-500 error" , serverError)
         Right (dyn :: NEL.NonEmpty Dynamic) -> do
-          liftIO $ print ("storing", fmap dynTypeRep dyn)
+          -- liftIO $ print ("storing", fmap dynTypeRep dyn)
           modify' (\fs@FuzzState{..} ->
             fs { stash = addToStash (NEL.toList dyn) stash } )
       where
