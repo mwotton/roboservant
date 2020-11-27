@@ -64,13 +64,8 @@ spec = do
   --             RS.prop_concurrent @UnsafeIO.UnsafeApi unsafeServer []
 
 
-instance RS.Breakdown Foo.Foo where
-  breakdown = pure . toDyn
-
-
-instance RS.Breakdown Headers.Foo where
-  breakdown = pure . toDyn
-
+deriving via (RS.Atom Foo.Foo) instance RS.Breakdown Foo.Foo
+deriving via (RS.Atom Headers.Foo) instance RS.Breakdown Headers.Foo
 
 deriving via (RS.Atom Void) instance RS.BuildFrom Void
 deriving via (RS.Atom Foo.Foo) instance RS.BuildFrom Foo.Foo
