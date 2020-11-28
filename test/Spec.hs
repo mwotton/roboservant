@@ -43,6 +43,10 @@ spec = do
       it "finds no error in a valid app" $ do
         RS.fuzz @Valid.Api Valid.server defaultConfig noCheck
           >>= (`shouldSatisfy` isNothing)
+      it "finds no error in a valid generic app" $ do
+        RS.fuzz @Valid.RoutedApi Valid.routedServer defaultConfig noCheck
+          >>= (`shouldSatisfy` isNothing)
+
       it "does fail coverage check" $ do
         r <- RS.fuzz @Valid.Api Valid.server defaultConfig { RS.coverageThreshold = 0.6 } noCheck
         fmap (RS.failureReason . RS.rsException) r `shouldSatisfy`
