@@ -17,6 +17,7 @@ import qualified Data.Dependent.Map as DM
 import qualified Type.Reflection as R
 import Data.Kind
 import Roboservant.Types.Internal
+import Data.Hashable
 
 class Typeable x => BuildFrom (x :: Type) where
   buildFrom :: Stash -> Maybe (StashValue x)
@@ -28,12 +29,13 @@ instance Typeable x => BuildFrom (Atom x) where
 
 deriving via (Atom Bool) instance BuildFrom Bool
 
-instance (Typeable x, BuildFrom x) => BuildFrom (Maybe x) where
-  buildFrom dict = Just options
-    where options :: StashValue (Maybe x)
-          options = StashValue $
-            ([],Nothing) :|
-              (maybe [] (NEL.toList . getStashValue . fmap Just) $ buildFrom @x dict
-              )
--- instance (BuildFrom a) => BuildFrom [a] -- where
-  --breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
+-- instance (Typeable x, Hashable x, BuildFrom x) => BuildFrom (Maybe x) where
+--   buildFrom dict = Just options
+--     where options :: StashValue (Maybe x)
+--           options = StashValue
+--             ([],Nothing) :|
+--               (maybe [] (NEL.toList . getStashValue . fmap Just) $ buildFrom @x dict
+--               )
+--             _
+-- -- instance (BuildFrom a) => BuildFrom [a] -- where
+--   --breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)

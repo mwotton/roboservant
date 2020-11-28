@@ -11,13 +11,14 @@ import Data.Aeson
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Servant
+import Data.Hashable
 
 newtype Foo = Foo Int
   deriving (Generic, Eq, Show, Typeable)
   deriving newtype (FromHttpApiData, ToHttpApiData)
 
+instance Hashable Foo
 instance ToJSON Foo
-
 instance FromJSON Foo
 
 type Api =

@@ -10,6 +10,7 @@ module Post where
 import GHC.Generics (Generic)
 import Servant
 import Data.Aeson
+import Data.Hashable
 
 type Api = Get '[JSON] FooPost
       :<|> ReqBody '[JSON] FooPost :> Post '[JSON] ()
@@ -17,6 +18,7 @@ type Api = Get '[JSON] FooPost
 data FooPost = FooPost
   deriving (Eq,Show,Generic)
 
+instance Hashable FooPost
 instance ToJSON FooPost
 instance FromJSON FooPost
 

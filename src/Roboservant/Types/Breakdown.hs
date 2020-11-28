@@ -29,22 +29,23 @@ import Data.Maybe (fromMaybe)
 import GHC.Generics(Generic)
 import Data.Typeable (Typeable)
 import Roboservant.Types.Internal
+import Data.Hashable
 
 -- | only use this when we are using the internal typerep map.
 promisedDyn :: Typeable a => Dynamic -> a
 promisedDyn = fromMaybe (error "internal error, typerep map misconstructed") . fromDynamic
 
 class Breakdown x where
-  breakdown :: x -> NonEmpty Dynamic
+  breakdown :: x -> NonEmpty (Dynamic,Int)
 --  default breakdown :: Typeable x => x -> NonEmpty Dynamic
 --  breakdown = pure . toDyn
 
 
-instance Typeable x => Breakdown (Atom x) where
-  breakdown = pure . toDyn . unAtom
+instance (Hashable x, Typeable x) => Breakdown (Atom x) where
+  breakdown (Atom x) = pure (toDyn x, hash x)
 
 deriving via (Atom ()) instance Breakdown ()
 deriving via (Atom Int) instance Breakdown Int
 
-instance (Typeable a, Breakdown a) => Breakdown [a] where
-  breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
+-- instance (Typeable a, Breakdown a) => Breakdown [a] where
+--   breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)

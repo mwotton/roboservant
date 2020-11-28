@@ -74,7 +74,7 @@ import Roboservant.Types
 import Servant (Endpoints, Proxy (Proxy), Server, ServerError (..))
 import System.Random (StdGen, mkStdGen, randomR)
 import qualified Type.Reflection as R
-
+import qualified Data.IntSet as IntSet
 
 data RoboservantException
   = RoboservantException
@@ -101,7 +101,7 @@ data FuzzOp
 
 data Config
   = Config
-      { seed :: [Dynamic],
+      { seed :: [(Dynamic,Int)],
         maxRuntime :: Double, -- seconds to test for
         maxReps :: Integer,
         rngSeed :: Int,
@@ -120,7 +120,7 @@ data EndpointOption
   = forall as.
     (V.RecordToList as, V.RMap as) =>
     EndpointOption
-      { eoCall :: V.Curried as (IO (Either ServerError (NonEmpty Dynamic))),
+      { eoCall :: V.Curried as (IO (Either ServerError (NonEmpty (Dynamic,Int)))),
         eoArgs :: V.Rec (TypedF StashValue) as
       }
 
@@ -206,7 +206,7 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
       ( forall as.
         (V.RecordToList as, V.RMap as) =>
         FuzzOp ->
-        V.Curried as (IO (Either ServerError (NonEmpty Dynamic))) ->
+        V.Curried as (IO (Either ServerError (NonEmpty (Dynamic,Int)))) ->
         V.Rec (TypedF V.Identity) as ->
         m r
       ) ->
@@ -216,7 +216,7 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
       (offset, EndpointOption {..}) <- elementOrFail . options =<< get
       r <-
         V.rtraverse
-          ( \(tr :*: StashValue svs) ->
+          ( \(tr :*: StashValue svs _) ->
               elementOrFail $
                 zipWith
                   (\i xy -> V.Const i :*: tr :*: xy)
@@ -247,19 +247,19 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
     execute ::
       (MonadState FuzzState m, MonadIO m, V.RecordToList as, V.RMap as) =>
       FuzzOp ->
-      V.Curried as (IO (Either ServerError (NonEmpty Dynamic))) ->
+      V.Curried as (IO (Either ServerError (NonEmpty (Dynamic,Int)))) ->
       V.Rec (TypedF V.Identity) as ->
       m ()
     execute fuzzop func args = do
       (liftIO . print . (fuzzop,) . stash ) =<< get
       st <- get
-      let showable = unlines $ ("args":map show argTypes)
-            <> ["fuzzop"
-               , show fuzzop
-               -- ,"dyncall"
-               -- ,show (dynTypeRep dyncall)
-               ,"state"
-               ]
+      -- let showable = unlines $ ("args":map show argTypes)
+      --       <> ["fuzzop"
+      --          , show fuzzop
+      --          -- ,"dyncall"
+      --          -- ,show (dynTypeRep dyncall)
+      --          ,"state"
+      --          ]
       -- liftIO $ putStrLn showable
       liftIO (V.runcurry' func argVals) >>= \case
         -- parameterise this
@@ -268,7 +268,7 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
             500 -> throw serverError
             _ -> do
               liftIO $ print ("ignoring non-500 error", serverError)
-        Right (dyn :: NEL.NonEmpty Dynamic) -> do
+        Right (dyn :: NEL.NonEmpty (Dynamic,Int)) -> do
           -- liftIO $ print ("storing", fmap dynTypeRep dyn)
           modify' (\fs@FuzzState{..} ->
             fs { stash = addToStash (NEL.toList dyn) stash } )
@@ -289,14 +289,15 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
         (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e)   =<< get)
 
 addToStash ::
-  [Dynamic] ->
+  [(Dynamic,Int)] ->
   Stash ->
   Stash
 addToStash result stash =
   foldr
-    ( \(Dynamic tr x) (Stash dict) ->
+    ( \(Dynamic tr x,hashed) (Stash dict) ->
         Stash $
-          DM.insertWith renumber tr (StashValue (([Provenance (R.SomeTypeRep tr) 0], x) :| [])) dict
+          DM.insertWith renumber tr
+          (StashValue (([Provenance (R.SomeTypeRep tr) 0], x) :| []) (IntSet.singleton hashed)) dict
     )
     stash
     result
@@ -305,11 +306,17 @@ addToStash result stash =
       StashValue a ->
       StashValue a ->
       StashValue a
-    renumber (StashValue singleDyn) (StashValue l) = StashValue $ case NEL.toList singleDyn of
-      [([Provenance tr _], dyn)] ->
-        l
-          <> pure ([Provenance tr (length (NEL.last l) + 1)], dyn)
-      _ -> error "should be impossible"
+    renumber (StashValue singleDyn singleHash) orig@(StashValue l intSet)
+      | not $ IntSet.null (singleHash `IntSet.intersection` intSet) = orig
+      | otherwise =
+        StashValue
+          (case NEL.toList singleDyn of
+             [([Provenance tr _], dyn)] ->
+               l
+               <> pure (([Provenance tr (length (NEL.last l) + 1)], dyn))
+             _ -> error "should be impossible")
+
+          (IntSet.union singleHash intSet)
 
 -- why isn't this in vinyl?
 recordToList' ::

@@ -9,12 +9,15 @@ import qualified Data.Dependent.Map as DM
 import Data.Dependent.Map (DMap)
 import qualified Type.Reflection as R
 import Data.Dependent.Sum
+import Data.IntSet(IntSet)
 
 data Provenance
   = Provenance R.SomeTypeRep Int
   deriving (Show,Eq)
 
-newtype StashValue a = StashValue { getStashValue :: NonEmpty ([Provenance], a) }
+data  StashValue a = StashValue { getStashValue :: NonEmpty ([Provenance], a)
+                                , stashHash :: IntSet
+                                }
   deriving (Functor, Show)
 
 -- wrap in newtype to give a custom Show instance, since the normal
@@ -24,7 +27,7 @@ newtype Stash = Stash { getStash :: DMap R.TypeRep StashValue }
 
 instance Show Stash where
   showsPrec i (Stash x) = showsPrec i $
-    Map.fromList . map (\(tr :=> StashValue vs) -> (R.SomeTypeRep tr, fmap fst vs)) $ DM.toList x
+    Map.fromList . map (\(tr :=> StashValue vs _) -> (R.SomeTypeRep tr, fmap fst vs)) $ DM.toList x
 
 -- | Can't be built up from parts, can't be broken down further.
 newtype Atom x = Atom { unAtom :: x }
