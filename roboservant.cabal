@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 49f8c03988a25b7e35dddaab65f250955a078392aaa293298885aea164315479
+-- hash: 0c7e475fb1182766bcb6f2b602d95ca2ce986757d1d23c061fb2800fee49f483
 
 name:           roboservant
 version:        0.1.0.2
@@ -31,7 +31,9 @@ library
       Roboservant.Direct
       Roboservant.Types
       Roboservant.Types.Breakdown
+      Roboservant.Types.BuildFrom
       Roboservant.Types.FlattenServer
+      Roboservant.Types.Internal
       Roboservant.Types.ReifiedApi
   other-modules:
       Paths_roboservant
@@ -44,6 +46,7 @@ library
     , containers
     , dependent-map
     , dependent-sum
+    , hashable
     , lifted-base
     , monad-control
     , mtl
@@ -55,6 +58,7 @@ library
     , string-conversions
     , text
     , time
+    , unordered-containers
     , vinyl
   default-language: Haskell2010
 
@@ -65,6 +69,7 @@ test-suite roboservant-test
       BuildFrom
       Foo
       Headers
+      Post
       Seeded
       UnsafeIO
       Valid
@@ -79,8 +84,10 @@ test-suite roboservant-test
     , containers
     , dependent-map
     , dependent-sum
+    , hashable
     , hspec
     , hspec-core
+    , http-api-data
     , lifted-base
     , monad-control
     , mtl
@@ -93,5 +100,6 @@ test-suite roboservant-test
     , string-conversions
     , text
     , time
+    , unordered-containers
     , vinyl
   default-language: Haskell2010

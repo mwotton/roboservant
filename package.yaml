@@ -17,6 +17,7 @@ dependencies:
 - bytestring
 - containers
 - random
+- hashable
 - lifted-base
 - monad-control
 - mtl
@@ -28,6 +29,7 @@ dependencies:
 - vinyl
 - dependent-sum
 - dependent-map
+- unordered-containers
 - text
 - time
 
@@ -51,3 +53,4 @@ tests:
     - aeson
     - hspec
     - hspec-core
+    - http-api-data

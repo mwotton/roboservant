@@ -29,7 +29,9 @@ import Data.List.NonEmpty (NonEmpty)
 import Data.Typeable (Typeable)
 import GHC.Generics ((:*:)(..))
 import GHC.TypeLits (Symbol)
+import Roboservant.Types.Internal
 import Roboservant.Types.Breakdown
+import Roboservant.Types.BuildFrom
 import Roboservant.Types.FlattenServer
 import Servant
 import Servant.API.Modifiers(FoldRequired,FoldLenient)
@@ -51,7 +53,7 @@ newtype Argument a = Argument
 
 data ReifiedEndpoint = forall as. (V.RecordToList as, V.RMap as) => ReifiedEndpoint
     { reArguments    :: V.Rec (TypedF Argument) as
-    , reEndpointFunc :: V.Curried as (IO (Either ServerError (NonEmpty Dynamic)))
+    , reEndpointFunc :: V.Curried as (IO (Either ServerError (NonEmpty (Dynamic,Int))))
     }
 
 type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
@@ -77,7 +79,7 @@ instance ToReifiedApi '[] where
 instance
   ( Typeable (EndpointRes endpoint)
   , NormalizeFunction (ServerT endpoint Handler)
-  , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either ServerError (NonEmpty Dynamic)))
+  , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either ServerError (NonEmpty (Dynamic,Int))))
   , ToReifiedEndpoint endpoint
   , ToReifiedApi endpoints, Typeable (ServerT endpoint Handler)
   ) =>
@@ -101,7 +103,7 @@ instance NormalizeFunction x => NormalizeFunction (r -> x) where
   normalize = fmap normalize
 
 instance (Typeable x, Breakdown x) => NormalizeFunction (Handler x) where
-  type Normal (Handler x) = IO (Either ServerError (NonEmpty Dynamic))
+  type Normal (Handler x) = IO (Either ServerError (NonEmpty (Dynamic,Int)))
   normalize handler = (runExceptT . runHandler') handler >>= \case
     Left serverError -> pure (Left serverError)
     Right x -> pure $ Right $ breakdown x

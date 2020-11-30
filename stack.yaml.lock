@@ -12,62 +12,6 @@ packages:
   original:
     hackage: servant-flatten-0.2@sha256:276896f7c5cdec5b8f8493f6205fded0cc602d050b58fdb09a6d7c85c3bb0837,1234
 - completed:
-    hackage: markov-chain-usage-model-0.0.0@sha256:1afa95faeb9213c4d960a669190078b41b89169462b8edd910472980671ba8c0,2112
-    pantry-tree:
-      size: 432
-      sha256: 6871bd9281acf589296d0998a3d62892b036040ab10e74e8a0f356f68c194f4f
-  original:
-    hackage: markov-chain-usage-model-0.0.0@sha256:1afa95faeb9213c4d960a669190078b41b89169462b8edd910472980671ba8c0,2112
-- completed:
-    hackage: servant-0.18@sha256:2b5c81089540c208b1945b5ca0c3551c862138d71b224a39fa275a62852a5c75,5068
-    pantry-tree:
-      size: 2458
-      sha256: 701b6443e486601dd127b92a28ca052278dea8dc528f013781c1304826e117d8
-  original:
-    hackage: servant-0.18
-- completed:
-    hackage: servant-client-0.18@sha256:3e3b8d145cf811e19849744ad305aa0bd42301d01ff75e1dac169bc9f5d18221,4589
-    pantry-tree:
-      size: 1299
-      sha256: 445c610d83a6e356ed2a7808af8deac84708be3e44d38cbf76e60fd6105f9715
-  original:
-    hackage: servant-client-0.18
-- completed:
-    hackage: servant-client-core-0.18@sha256:6702f04f3e5ac47abace5b26ab1948480437334747895407f0697502a403b96a,3593
-    pantry-tree:
-      size: 1444
-      sha256: 20f538ae12091696073a2ac5f3301a4a56686f5e2889b2a9e539c0d61a332cd1
-  original:
-    hackage: servant-client-core-0.18
-- completed:
-    hackage: servant-server-0.18@sha256:ec7f361bc9848968b1fff8091fa2213b721d3f47549421945c6a7ca1702e22e6,5424
-    pantry-tree:
-      size: 2546
-      sha256: c2470cd8665742cee13faae1db7e3d49d70b027d57c4578e3f7ba66ffc8dc7b4
-  original:
-    hackage: servant-server-0.18
-- completed:
-    hackage: QuickCheck-2.14.1@sha256:01e46d7b0a8d3148288ec977625f62d5516ebb5031a50c63f0453863301b4a79,7736
-    pantry-tree:
-      size: 2315
-      sha256: 21961d0875fc156cdd97110a6fb277f37aa31faa3c7910895f84c82630e7ba46
-  original:
-    hackage: QuickCheck-2.14.1@sha256:01e46d7b0a8d3148288ec977625f62d5516ebb5031a50c63f0453863301b4a79,7736
-- completed:
-    hackage: random-1.2.0@sha256:4321209c8faedc034810ea8ed0dbc4a36f1a1df97b75af024219f2f533da57de,6094
-    pantry-tree:
-      size: 1259
-      sha256: 29ff0a7ec5bf123e2c40f849b7af163950854a6c08c68b4a1b4364ce7a515af0
-  original:
-    hackage: random-1.2.0
-- completed:
-    hackage: splitmix-0.1.0.1@sha256:22f9662e7e8b173421872241edd39350078a9ed4bb9e9f503948c5b483c79276,5253
-    pantry-tree:
-      size: 1149
-      sha256: b9a0c60e2d4786bbb276ce6606027a99615bf703fa3e0f01911e8c6a656c5161
-  original:
-    hackage: splitmix-0.1.0.1@sha256:22f9662e7e8b173421872241edd39350078a9ed4bb9e9f503948c5b483c79276,5253
-- completed:
     hackage: vinyl-0.13.0@sha256:0f247cd3f8682b30881a07de18e6fec52d540646fbcb328420049cc8d63cd407,3724
     pantry-tree:
       size: 1857
@@ -96,31 +40,33 @@ packages:
   original:
     hackage: dependent-map-0.4.0.0
 - completed:
-    subdir: hedgehog
-    name: hedgehog
-    version: 1.0.3
-    git: https://github.com/hedgehogqa/haskell-hedgehog.git
+    hackage: servant-0.18.2@sha256:f8c9f0e9891a3ada1337a3c0b369333a3b5a2d0909dd3cd09d79bc26adeaca44,5298
     pantry-tree:
-      size: 2575
-      sha256: 7e69930fef281dfeb47b2f7c745c26234768e56ffb5490065f607c57146ffbab
-    commit: 03714682586e43b5ddf5c00391035471a6e01238
+      size: 2662
+      sha256: e930e814de1aa4d24274bdf18341a50b7ed38604ae4734f730e09238ac5bf7e2
   original:
-    subdir: hedgehog
-    git: https://github.com/hedgehogqa/haskell-hedgehog.git
-    commit: 03714682586e43b5ddf5c00391035471a6e01238
+    hackage: servant-0.18.2
 - completed:
-    subdir: hspec-core
-    name: hspec-core
-    version: 2.7.4
-    git: https://github.com/mwotton/hspec
+    hackage: servant-client-0.18.2@sha256:82578ade7468873259bb2fdc9d62290a0f998550900683e1410a237ed4b05410,4591
     pantry-tree:
-      size: 3899
-      sha256: 6ece11ad28a7f122a502e766eb1b3ef950815c2d16babb0ea8744646f1c1bd70
-    commit: cd9012414a93cf08f86e409544d4d3a8f282b507
+      size: 1300
+      sha256: 6324892c77bedbce32f0d6f1612fc2cb0d82c163d3be39efb951d3cc3792ce4a
   original:
-    subdir: hspec-core
-    git: https://github.com/mwotton/hspec
-    commit: cd9012414a93cf08f86e409544d4d3a8f282b507
+    hackage: servant-client-0.18.2
+- completed:
+    hackage: servant-client-core-0.18.2@sha256:4cac20d0b0d889a5613a95ec18526afd16abcaf0b4b7ba5fed35c7bf85800162,3638
+    pantry-tree:
+      size: 1444
+      sha256: 90279e27ba5a7f8f4f1761e81d0dded343839316fdbf34d395954487701e29df
+  original:
+    hackage: servant-client-core-0.18.2
+- completed:
+    hackage: servant-server-0.18.2@sha256:56679af62ab8820a2108da6153d9ae9dde37199e62172365bdaea1458c3f7c2d,5482
+    pantry-tree:
+      size: 2614
+      sha256: 3ac7430134439e4b67f0f5333f63b89d0cb7de5e2e07f0af7801c8e223942b9c
+  original:
+    hackage: servant-server-0.18.2
 snapshots:
 - completed:
     size: 532380

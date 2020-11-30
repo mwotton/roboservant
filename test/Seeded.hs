@@ -11,6 +11,7 @@ import Data.Aeson
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Servant
+import Data.Hashable
 
 newtype Seed = Seed Int
   deriving (Generic, Eq, Show, Typeable)
@@ -18,6 +19,7 @@ newtype Seed = Seed Int
 
 instance ToJSON Seed
 instance FromJSON Seed
+instance Hashable Seed
 
 type Api = Capture "seed" Seed :> Get '[JSON] ()
       :<|> Get '[JSON] ()
