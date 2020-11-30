@@ -20,8 +20,40 @@ module Roboservant.Direct
   )
 where
 
-import Control.Exception.Lifted(throw,handle,Handler(..), Exception,SomeException,SomeAsyncException, catch, catches)
-import Control.Monad.State.Strict(MonadState,MonadIO,get,modify',liftIO,runStateT)
+import Control.Exception.Lifted
+    ( throw,
+      handle,
+      Handler(..),
+      Exception,
+      SomeException,
+      SomeAsyncException,
+      catch,
+      catches )
+import Control.Exception.Lifted
+    ( throw,
+      Handler(..),
+      Exception,
+      SomeException,
+      SomeAsyncException,
+      catch,
+      catches )
+import Control.Exception.Lifted
+    ( Exception,
+      Handler(..),
+      SomeAsyncException,
+      SomeException,
+      catch,
+      catches,
+      handle,
+      throw )
+
+import Control.Monad.State.Strict
+    ( MonadState, MonadIO, get, modify', liftIO, runStateT )
+import Control.Monad.State.Strict
+    ( MonadState, MonadIO, get, modify', liftIO, execStateT )
+import Control.Monad.State.Strict
+    ( MonadIO, MonadState, get, liftIO, modify', runStateT )
+
 import Control.Exception.Lifted(throw,Handler(..), Exception,SomeException,SomeAsyncException, catch, catches)
 import Control.Monad(void,replicateM,forM_)
 import Control.Monad.State.Strict(MonadState,MonadIO,get,modify',liftIO,execStateT)
@@ -33,17 +65,29 @@ import Data.Map.Strict(Map)
 import qualified Data.Set as Set
 import Data.Maybe (mapMaybe)
 import Data.Typeable (TypeRep)
-import Servant (Endpoints, Proxy (Proxy), Server, ServerError(..))
-import System.Random(StdGen,randomR,mkStdGen)
+import Servant ( Endpoints, Proxy(Proxy), Server, ServerError(..) )
+import Servant ( Endpoints, Proxy(Proxy), Server, ServerError(..) )
+
+import System.Random ( StdGen, randomR, mkStdGen )
+import System.Random ( StdGen, mkStdGen, randomR )
+
 import qualified Data.List.NonEmpty as NEL
 import qualified Data.Map.Strict as Map
 import Data.Time.Clock
+import Data.Time.Clock
+
 import Data.List(sortOn)
 import Control.Arrow(second)
 import System.Timeout.Lifted(timeout)
-import GHC.Generics ((:*:)(..))
+import GHC.Generics ( (:*:)(..) )
+import GHC.Generics ( (:*:)(..) )
+
 import qualified Data.Vinyl.Functor as V
+import qualified Data.Vinyl.Functor as V
+
 import qualified Data.Vinyl.Curry as V
+import qualified Data.Vinyl.Curry as V
+
 
 
 import Control.Exception.Lifted (Exception, Handler (..), SomeAsyncException, SomeException, catch, catches, handle, throw)
@@ -313,7 +357,7 @@ addToStash result stash =
           (case NEL.toList singleDyn of
              [([Provenance tr _], dyn)] ->
                l
-               <> pure (([Provenance tr (length (NEL.last l) + 1)], dyn))
+(([Provenance tr (length (NEL.last l) + 1)], dyn))
              _ -> error "should be impossible")
 
           (IntSet.union singleHash intSet)

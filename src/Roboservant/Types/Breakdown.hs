@@ -1,9 +1,17 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DerivingVia #-}
+
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
 {-# LANGUAGE FlexibleInstances #-}
+{-# LANGUAGE FlexibleInstances #-}
+
 {-# LANGUAGE GADTs #-}
+{-# LANGUAGE GADTs #-}
+
 {-# LANGUAGE DefaultSignatures #-}
 {-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}

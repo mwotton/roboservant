@@ -1,6 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE StandaloneDeriving #-}
+
 {-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE DerivingVia #-}
+
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DerivingVia #-}
