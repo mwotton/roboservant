@@ -356,8 +356,7 @@ addToStash result stash =
         StashValue
           (case NEL.toList singleDyn of
              [([Provenance tr _], dyn)] ->
-               l
-(([Provenance tr (length (NEL.last l) + 1)], dyn))
+               l  <> pure (([Provenance tr (length (NEL.last l) + 1)], dyn))
              _ -> error "should be impossible")
 
           (IntSet.union singleHash intSet)

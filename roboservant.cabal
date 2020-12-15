@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0c7e475fb1182766bcb6f2b602d95ca2ce986757d1d23c061fb2800fee49f483
+-- hash: d023be57a293833b53804ddc85db27855bf67fd8d96adb0bdab38c899f691147
 
 name:           roboservant
 version:        0.1.0.2
@@ -66,7 +66,6 @@ test-suite roboservant-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      BuildFrom
       Foo
       Headers
       Post
