@@ -182,14 +182,14 @@ instance
 
 -- this isn't happy in 0.16.2
 instance
-  ( BuildFrom (IfLenient String mods captureType)
+  ( BuildFrom captureType
   , ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint (Capture' mods name captureType :> endpoint)
   where
-  type EndpointArgs (Capture' mods name captureType :> endpoint) = IfLenient String mods captureType ': EndpointArgs endpoint
+  type EndpointArgs (Capture' mods name captureType :> endpoint) = captureType ': EndpointArgs endpoint
   type EndpointRes  (Capture' mods name captureType :> endpoint) = EndpointRes endpoint
   reifiedEndpointArguments =
-   tagType (Argument (buildFrom @(IfLenient String mods captureType)))
+   tagType (Argument (buildFrom @(captureType)))
       V.:& reifiedEndpointArguments @endpoint
 
 instance
