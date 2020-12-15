@@ -179,6 +179,8 @@ instance
    tagType (Argument (buildFrom @(IfRequiredLenient T.Text mods headerType)))
       V.:& reifiedEndpointArguments @endpoint
 
+
+-- this isn't happy in 0.16.2
 instance
   ( BuildFrom (IfLenient String mods captureType)
   , ToReifiedEndpoint endpoint) =>
