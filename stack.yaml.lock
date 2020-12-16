@@ -40,33 +40,33 @@ packages:
   original:
     hackage: dependent-map-0.4.0.0
 - completed:
-    hackage: servant-0.18.2@sha256:f8c9f0e9891a3ada1337a3c0b369333a3b5a2d0909dd3cd09d79bc26adeaca44,5298
+    hackage: servant-0.16.2@sha256:6c5d19d09a9dd2f2b2bf99193f944491f8374802678b79ec729e3f3ae51e216d,5867
     pantry-tree:
-      size: 2662
-      sha256: e930e814de1aa4d24274bdf18341a50b7ed38604ae4734f730e09238ac5bf7e2
+      size: 2604
+      sha256: bee4504840cf4836326e85f1cf02584bf898188b64d976dac6c6c6793d926794
   original:
-    hackage: servant-0.18.2
+    hackage: servant-0.16.2
 - completed:
-    hackage: servant-client-0.18.2@sha256:82578ade7468873259bb2fdc9d62290a0f998550900683e1410a237ed4b05410,4591
+    hackage: servant-client-0.16.0.1@sha256:f970ad4e927530b77f52b99a175c85cfdcd1ef988083d56a1f68c6a3dafe8d51,4376
     pantry-tree:
-      size: 1300
-      sha256: 6324892c77bedbce32f0d6f1612fc2cb0d82c163d3be39efb951d3cc3792ce4a
+      size: 804
+      sha256: 3690a9c4dbdf8a502648c8c29029b1a0c78e53fd84db90ed388f7abbf5518c25
   original:
-    hackage: servant-client-0.18.2
+    hackage: servant-client-0.16.0.1
 - completed:
-    hackage: servant-client-core-0.18.2@sha256:4cac20d0b0d889a5613a95ec18526afd16abcaf0b4b7ba5fed35c7bf85800162,3638
+    hackage: servant-client-core-0.16@sha256:34e28b8d59b0b61fb3c97fb61043583538016898604a67bfa3bb35f02d8e4d9c,3545
     pantry-tree:
-      size: 1444
-      sha256: 90279e27ba5a7f8f4f1761e81d0dded343839316fdbf34d395954487701e29df
+      size: 1365
+      sha256: d1a8c41b18e9648af8f1221c7747246ecde2a2ce2bae697c3c986f02a0caf857
   original:
-    hackage: servant-client-core-0.18.2
+    hackage: servant-client-core-0.16
 - completed:
-    hackage: servant-server-0.18.2@sha256:56679af62ab8820a2108da6153d9ae9dde37199e62172365bdaea1458c3f7c2d,5482
+    hackage: servant-server-0.16.2@sha256:f6b36df7c4f1688ff9d48d272e6cfc5f001b3221d2a732e73faf44e8b9e1ea04,5798
     pantry-tree:
-      size: 2614
-      sha256: 3ac7430134439e4b67f0f5333f63b89d0cb7de5e2e07f0af7801c8e223942b9c
+      size: 2517
+      sha256: 12330638c1b455050d19ad0797b35893efbb5cd233789581eae93cc8983a84c3
   original:
-    hackage: servant-server-0.18.2
+    hackage: servant-server-0.16.2
 snapshots:
 - completed:
     size: 532380

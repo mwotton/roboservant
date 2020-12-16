@@ -9,10 +9,11 @@ extra-deps:
 - dependent-sum-0.7.1.0
 - constraints-extras-0.3.0.2
 - dependent-map-0.4.0.0
-- servant-0.18.2
-- servant-client-0.18.2
-- servant-client-core-0.18.2
-- servant-server-0.18.2
+
+- servant-0.16.2
+- servant-client-0.16.0.1
+- servant-client-core-0.16
+- servant-server-0.16.2
 
 # cached for testing
 # - servant-0.18.2
