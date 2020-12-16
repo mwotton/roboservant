@@ -13,3 +13,9 @@ extra-deps:
 - servant-client-0.18.2
 - servant-client-core-0.18.2
 - servant-server-0.18.2
+
+# cached for testing
+# - servant-0.18.2
+# - servant-client-0.18.2
+# - servant-client-core-0.18.2
+# - servant-server-0.18.2

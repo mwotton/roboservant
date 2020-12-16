@@ -190,6 +190,18 @@ instance
    tagType (Argument (buildFrom @(IfLenient String mods captureType)))
       V.:& reifiedEndpointArguments @endpoint
 
+-- caching for merge
+-- instance
+--   ( BuildFrom (IfLenient String mods captureType)
+--   , ToReifiedEndpoint endpoint) =>
+--   ToReifiedEndpoint (Capture' mods name captureType :> endpoint)
+--   where
+--   type EndpointArgs (Capture' mods name captureType :> endpoint) = IfLenient String mods captureType ': EndpointArgs endpoint
+--   type EndpointRes  (Capture' mods name captureType :> endpoint) = EndpointRes endpoint
+--   reifiedEndpointArguments =
+--    tagType (Argument (buildFrom @(IfLenient String mods captureType)))
+--       V.:& reifiedEndpointArguments @endpoint
+
 instance
   ( BuildFrom (IfLenient String mods requestType)
   , ToReifiedEndpoint endpoint) =>
