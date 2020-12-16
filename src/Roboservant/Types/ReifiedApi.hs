@@ -1,4 +1,3 @@
-
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -16,7 +15,7 @@
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
-
+{-# LANGUAGE CPP #-}
 module Roboservant.Types.ReifiedApi where
 
 
@@ -181,6 +180,18 @@ instance
 
 
 -- this isn't happy in 0.16.2
+#if MIN_VERSION_servant(0,17,0)
+instance
+  ( BuildFrom (IfLenient String mods captureType)
+  , ToReifiedEndpoint endpoint) =>
+  ToReifiedEndpoint (Capture' mods name captureType :> endpoint)
+  where
+  type EndpointArgs (Capture' mods name captureType :> endpoint) = IfLenient String mods captureType ': EndpointArgs endpoint
+  type EndpointRes  (Capture' mods name captureType :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments =
+   tagType (Argument (buildFrom @(IfLenient String mods captureType)))
+      V.:& reifiedEndpointArguments @endpoint
+#else
 instance
   ( BuildFrom captureType
   , ToReifiedEndpoint endpoint) =>
@@ -192,17 +203,8 @@ instance
    tagType (Argument (buildFrom @(captureType)))
       V.:& reifiedEndpointArguments @endpoint
 
+#endif
 -- caching for merge
--- instance
---   ( BuildFrom (IfLenient String mods captureType)
---   , ToReifiedEndpoint endpoint) =>
---   ToReifiedEndpoint (Capture' mods name captureType :> endpoint)
---   where
---   type EndpointArgs (Capture' mods name captureType :> endpoint) = IfLenient String mods captureType ': EndpointArgs endpoint
---   type EndpointRes  (Capture' mods name captureType :> endpoint) = EndpointRes endpoint
---   reifiedEndpointArguments =
---    tagType (Argument (buildFrom @(IfLenient String mods captureType)))
---       V.:& reifiedEndpointArguments @endpoint
 
 instance
   ( BuildFrom (IfLenient String mods requestType)
