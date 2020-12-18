@@ -1,5 +1,7 @@
 {-# LANGUAGE DeriveFunctor #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE DerivingStrategies #-}
 
 module Roboservant.Types.Internal where
 
@@ -10,10 +12,14 @@ import Data.Dependent.Map (DMap)
 import qualified Type.Reflection as R
 import Data.Dependent.Sum
 import Data.IntSet(IntSet)
+import Data.Hashable(Hashable)
+import GHC.Generics(Generic)
 
 data Provenance
   = Provenance R.SomeTypeRep Int
-  deriving (Show,Eq)
+  deriving (Show,Eq,Generic)
+
+instance Hashable Provenance
 
 data  StashValue a = StashValue { getStashValue :: NonEmpty ([Provenance], a)
                                 , stashHash :: IntSet
@@ -31,6 +37,7 @@ instance Show Stash where
 
 -- | Can't be built up from parts, can't be broken down further.
 newtype Atom x = Atom { unAtom :: x }
+  deriving newtype Hashable
 
 -- | can be broken down and built up from generic pieces
 newtype Compound x = Compound { unCompound :: x }

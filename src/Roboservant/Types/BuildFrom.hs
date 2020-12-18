@@ -1,10 +1,12 @@
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DerivingStrategies #-}
+
+
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DerivingVia #-}
+
+
 
 
 
@@ -18,16 +20,62 @@ import qualified Type.Reflection as R
 import Data.Kind
 import Roboservant.Types.Internal
 import Data.Hashable
+import qualified Data.IntSet as IntSet
+import Data.IntSet(IntSet)
+import Data.Maybe(catMaybes,fromMaybe)
 
-class Typeable x => BuildFrom (x :: Type) where
-  buildFrom :: Stash -> Maybe (StashValue x)
+buildFrom :: forall x . (Hashable x, BuildFrom x, Typeable x) => Stash -> Maybe (StashValue x)
+buildFrom stash = buildStash (maybe [] (NEL.toList . getStashValue)  (DM.lookup R.typeRep (getStash stash))
+                              <> extras stash )
+  where
 
--- | this is a little esoteric: basically, we're always going to use this with
---   deriving-via, so we need to look up the underlying `x` and then wrap it in Atom.
-instance Typeable x => BuildFrom (Atom x) where
-  buildFrom = fmap (fmap Atom) <$> DM.lookup R.typeRep . getStash
+        buildStash :: [([Provenance], x)] -> Maybe (StashValue x)
+        buildStash  = fmap (foldr1 addStash . fmap promoteToStash) . NEL.nonEmpty
+
+        promoteToStash :: ([Provenance], x) -> StashValue x
+        promoteToStash (p,x) = StashValue (pure (p,x))
+                                 (IntSet.singleton (hash x))
+
+        -- | sorta fiddly. looks like (<>), but in general it's not safe to add arbitrary StashValues, because
+        --   there's no guarantee that they came from the same run, which would invalidate all the provenance stuff.
+        --   in this context it's safe because we have no access to anything else.
+        --
+        --   we _do_ have to check here that the new elements are not already contained, however.
+        addStash :: StashValue x -> StashValue x -> StashValue x
+        addStash old (StashValue newVal _)
+          = let insertableVals = NEL.filter ((`IntSet.notMember` stashHash old) . hash) newVal
+            in StashValue ( addListToNE (getStashValue old) insertableVals )
+               (IntSet.union (IntSet.fromList . map hash . fmap snd . NEL.toList $ newVal) (stashHash old))
+
+        addListToNE :: NonEmpty a -> [a] -> NonEmpty a
+        addListToNE ne l = NEL.fromList (NEL.toList ne <> l)
+
+--        addToHash :: x -> IntSet -> IntSet
+--        addToHash x = IntSet.insert
+
+class (Hashable x, Typeable x) => BuildFrom (x :: Type) where
+  extras :: Stash -> [([Provenance], x)]
+
+instance (Hashable x, Typeable x) => BuildFrom (Atom x) where
+  extras _ = []
 
 deriving via (Atom Bool) instance BuildFrom Bool
+
+-- instance (Typeable x, Hashable x, BuildFrom x) => BuildFrom (Maybe x) where
+--  extras dict = _
+
+
+-- collapseList :: (Hashable a, Typeable a) => [a] -> Maybe (StashValue a)
+-- collapseList = fmap buildStashValue . NE.nonEmpty --  . filter jsonParseable
+--   where
+--     -- this is... not particularly principled. the provenance stuff probably needs to be reworked.
+--     buildStashValue values = StashValue
+--       { getStashValue = fmap ([],) values
+--       , stashHash = IntSet.fromList $ hash <$> NE.toList values
+--       }
+-- -- instance (BuildFrom a) => BuildFrom [a] -- where
+--   --breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
+
 
 -- instance (Typeable x, Hashable x, BuildFrom x) => BuildFrom (Maybe x) where
 --   buildFrom dict = Just options
