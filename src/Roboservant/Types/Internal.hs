@@ -14,6 +14,7 @@ import Data.Dependent.Sum
 import Data.IntSet(IntSet)
 import Data.Hashable(Hashable)
 import GHC.Generics(Generic)
+import Data.Typeable(Typeable)
 
 data Provenance
   = Provenance R.SomeTypeRep Int
@@ -37,7 +38,8 @@ instance Show Stash where
 
 -- | Can't be built up from parts, can't be broken down further.
 newtype Atom x = Atom { unAtom :: x }
-  deriving newtype Hashable
+  deriving newtype (Hashable,Typeable)
 
 -- | can be broken down and built up from generic pieces
 newtype Compound x = Compound { unCompound :: x }
+  deriving newtype (Hashable,Typeable)

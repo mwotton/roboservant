@@ -74,10 +74,10 @@ spec = do
         RS.fuzz @Foo.Api Foo.server defaultConfig noCheck
           >>= (`shouldSatisfy` isJust)
 
-    -- describe "headers" $ do
-    --   it "should find a failure that's dependent on using header info" $ do
-    --     RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
-    --       >>= (`shouldSatisfy` isJust)
+    describe "headers" $ do
+      it "should find a failure that's dependent on using header info" $ do
+        RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
+          >>= (`shouldSatisfy` isJust)
 
     -- describe "can build from pieces" $ do
     --   it "should find a failure that requires some assembly" $ do
