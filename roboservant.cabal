@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 2413ea31d818460d71253663fb2f666a183719df85b1ca874016de1d174a0a96
+-- hash: 259bc9e689003f4c9cb6d24bb6e68043f20c1401cf4031df677aac6909983f33
 
 name:           roboservant
 version:        0.1.0.2
@@ -33,7 +33,6 @@ library
       Roboservant.Types.Breakdown
       Roboservant.Types.BuildFrom
       Roboservant.Types.FlattenServer
-      Roboservant.Types.GBuildFrom
       Roboservant.Types.Internal
       Roboservant.Types.ReifiedApi
   other-modules:
@@ -67,10 +66,10 @@ test-suite roboservant-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
-      BuildFrom
       Foo
       Headers
       Post
+      Product
       Seeded
       UnsafeIO
       Valid

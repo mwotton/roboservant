@@ -1,14 +1,10 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE StandaloneDeriving #-}
-
+{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE DerivingVia #-}
-
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE StandaloneDeriving #-}
 
 {-# OPTIONS_GHC -fno-warn-orphans #-}
 import qualified Foo
@@ -16,9 +12,11 @@ import qualified Seeded
 import qualified Valid
 import qualified Headers
 import qualified Post
+import qualified Product
+
 import Test.Hspec.Core.Spec
 
-import Data.Dynamic(toDyn)
+import Data.Dynamic(toDyn,Typeable,Dynamic)
 import qualified Roboservant as RS
 import Test.Hspec
 import Data.Void
@@ -72,12 +70,28 @@ spec = do
     describe "Foo" $ do
       it "finds an error in a basic app" $
         RS.fuzz @Foo.Api Foo.server defaultConfig noCheck
-          >>= (`shouldSatisfy` isJust)
+          >>= (`shouldSatisfy` serverFailure)
 
-    describe "headers" $ do
+    describe "headers (and sum types)" $ do
       it "should find a failure that's dependent on using header info" $ do
         RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
-          >>= (`shouldSatisfy` isJust)
+          >>= (`shouldSatisfy` serverFailure)
+
+    describe "product types" $ do
+      it "should find a failure that's dependent on creating a product" $ do
+        RS.fuzz @Product.Api Product.server defaultConfig { RS.seed = [hashedDyn 'a', hashedDyn (1::Int)]} noCheck
+          >>= (`shouldSatisfy` serverFailure)
+            -- >>= (`shouldSatisfy` isJust)
+
+hashedDyn :: (Hashable a, Typeable a) => a -> (Dynamic, Int)
+hashedDyn a = (toDyn a, hash a)
+
+serverFailure :: Maybe RS.Report -> Bool
+serverFailure = \case
+  Just RS.Report{..} ->
+    let RS.RoboservantException{..} = rsException
+    in failureReason /= RS.NoPossibleMoves
+  _ -> False
 
     -- describe "can build from pieces" $ do
     --   it "should find a failure that requires some assembly" $ do
@@ -117,6 +131,8 @@ deriving via (RS.Atom Void) instance RS.BuildFrom Void
 
 deriving via (RS.Atom Post.FooPost) instance RS.BuildFrom Post.FooPost
 deriving via (RS.Atom Post.FooPost) instance RS.Breakdown Post.FooPost
+
+deriving via (RS.Compound Product.Foo) instance RS.BuildFrom Product.Foo
 
 
 --deriving via (Compound RS.BuildFrom.Wrapped) instance RS.BuildFrom RS.BuildFrom.Wrapped
