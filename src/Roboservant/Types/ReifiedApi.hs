@@ -38,7 +38,7 @@ import qualified Data.Text as T
 import qualified Data.Vinyl as V
 import qualified Data.Vinyl.Curry as V
 import qualified Type.Reflection as R
-
+import Data.Hashable(Hashable)
 
 newtype ApiOffset = ApiOffset Int
   deriving (Eq, Show, Ord)
@@ -101,7 +101,7 @@ instance NormalizeFunction x => NormalizeFunction (r -> x) where
   type Normal (r -> x) = r -> Normal x
   normalize = fmap normalize
 
-instance (Typeable x, Breakdown x) => NormalizeFunction (Handler x) where
+instance (Typeable x, Hashable x, Breakdown x) => NormalizeFunction (Handler x) where
   type Normal (Handler x) = IO (Either ServerError (NonEmpty (Dynamic,Int)))
   normalize handler = (runExceptT . runHandler') handler >>= \case
     Left serverError -> pure (Left serverError)

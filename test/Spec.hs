@@ -13,6 +13,7 @@ import qualified Valid
 import qualified Headers
 import qualified Post
 import qualified Product
+import qualified Breakdown
 
 import Test.Hspec.Core.Spec
 
@@ -72,6 +73,7 @@ spec = do
         RS.fuzz @Foo.Api Foo.server defaultConfig noCheck
           >>= (`shouldSatisfy` serverFailure)
 
+  describe "BuildFrom" $ do
     describe "headers (and sum types)" $ do
       it "should find a failure that's dependent on using header info" $ do
         RS.fuzz @Headers.Api Headers.server defaultConfig noCheck
@@ -79,12 +81,18 @@ spec = do
 
     describe "product types" $ do
       it "should find a failure that's dependent on creating a product" $ do
-        RS.fuzz @Product.Api Product.server defaultConfig { RS.seed = [hashedDyn 'a', hashedDyn (1::Int)]} noCheck
+        RS.fuzz @Product.Api Product.server defaultConfig { RS.seed = [RS.hashedDyn 'a', RS.hashedDyn (1::Int)]} noCheck
           >>= (`shouldSatisfy` serverFailure)
-            -- >>= (`shouldSatisfy` isJust)
 
-hashedDyn :: (Hashable a, Typeable a) => a -> (Dynamic, Int)
-hashedDyn a = (toDyn a, hash a)
+  describe "Breakdown" $ do
+    it "handles products" $ do
+      RS.fuzz @Breakdown.ProductApi Breakdown.productServer defaultConfig noCheck
+        >>= (`shouldSatisfy` serverFailure)
+
+    it "handles sums" $ do
+      RS.fuzz @Breakdown.SumApi Breakdown.sumServer defaultConfig noCheck
+        >>= (`shouldSatisfy` serverFailure)
+
 
 serverFailure :: Maybe RS.Report -> Bool
 serverFailure = \case
@@ -133,6 +141,9 @@ deriving via (RS.Atom Post.FooPost) instance RS.BuildFrom Post.FooPost
 deriving via (RS.Atom Post.FooPost) instance RS.Breakdown Post.FooPost
 
 deriving via (RS.Compound Product.Foo) instance RS.BuildFrom Product.Foo
+deriving via (RS.Compound Breakdown.Foo) instance RS.Breakdown Breakdown.Foo
+deriving via (RS.Compound Breakdown.SomeSum) instance RS.Breakdown Breakdown.SomeSum
+
 
 
 --deriving via (Compound RS.BuildFrom.Wrapped) instance RS.BuildFrom RS.BuildFrom.Wrapped

@@ -12,9 +12,10 @@ import Data.Dependent.Map (DMap)
 import qualified Type.Reflection as R
 import Data.Dependent.Sum
 import Data.IntSet(IntSet)
-import Data.Hashable(Hashable)
+import Data.Hashable(Hashable,hash)
 import GHC.Generics(Generic)
 import Data.Typeable(Typeable)
+import Data.Dynamic(Dynamic,toDyn)
 
 data Provenance
   = Provenance R.SomeTypeRep Int
@@ -43,3 +44,6 @@ newtype Atom x = Atom { unAtom :: x }
 -- | can be broken down and built up from generic pieces
 newtype Compound x = Compound { unCompound :: x }
   deriving newtype (Hashable,Typeable)
+
+hashedDyn :: (Hashable a, Typeable a) => a -> (Dynamic, Int)
+hashedDyn a = (toDyn a, hash a)

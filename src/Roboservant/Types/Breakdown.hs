@@ -1,59 +1,65 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingVia #-}
-{-# LANGUAGE DerivingVia #-}
-
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE StandaloneDeriving #-}
-
-{-# LANGUAGE FlexibleInstances #-}
-{-# LANGUAGE FlexibleInstances #-}
-
-{-# LANGUAGE GADTs #-}
-{-# LANGUAGE GADTs #-}
-
-{-# LANGUAGE DefaultSignatures #-}
-{-# LANGUAGE DerivingStrategies #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE MultiParamTypeClasses #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeFamilies #-}
-{-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE DerivingVia #-}
-
+{-# LANGUAGE TypeFamilies #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE UndecidableInstances #-}
 
 module Roboservant.Types.Breakdown where
 
-import Data.Dynamic (Dynamic, fromDynamic, toDyn)
+import Data.Dynamic (Dynamic, toDyn)
 import Data.List.NonEmpty (NonEmpty (..))
-import qualified Data.List.NonEmpty as NEL
-import Data.Maybe (fromMaybe)
-import GHC.Generics(Generic)
+import GHC.Generics
 import Data.Typeable (Typeable)
 import Roboservant.Types.Internal
 import Data.Hashable
+import Data.Kind
+import qualified Data.List.NonEmpty as NEL
 
--- | only use this when we are using the internal typerep map.
-promisedDyn :: Typeable a => Dynamic -> a
-promisedDyn = fromMaybe (error "internal error, typerep map misconstructed") . fromDynamic
+breakdown :: (Hashable x, Typeable x, Breakdown x)
+          => x -> NonEmpty (Dynamic, Int)
+breakdown x = hashedDyn x :| breakdownExtras x
 
 class Breakdown x where
-  breakdown :: x -> NonEmpty (Dynamic,Int)
---  default breakdown :: Typeable x => x -> NonEmpty Dynamic
---  breakdown = pure . toDyn
-
+  breakdownExtras :: x -> [(Dynamic,Int)]
 
 instance (Hashable x, Typeable x) => Breakdown (Atom x) where
-  breakdown (Atom x) = pure (toDyn x, hash x)
+  breakdownExtras (Atom x) = [(toDyn x, hash x)]
 
 deriving via (Atom ()) instance Breakdown ()
 deriving via (Atom Int) instance Breakdown Int
+deriving via (Atom [Char]) instance Breakdown [Char]
 
--- instance (Typeable a, Breakdown a) => Breakdown [a] where
---   breakdown x = toDyn x :| mconcat (map (NEL.toList . breakdown) x)
+class GBreakdown (f :: k -> *)  where
+  gBreakdownExtras :: f a -> [(Dynamic,Int)]
+
+instance (Hashable x, Typeable x, Generic x, GBreakdown (Rep x)) => Breakdown (Compound (x::Type)) where
+  breakdownExtras = gBreakdownExtras . from . unCompound
+
+instance GBreakdown f =>  GBreakdown (M1 S c f ) where
+  gBreakdownExtras (M1 f) = gBreakdownExtras f
+
+instance GBreakdown b => GBreakdown (M1 D a b) where
+  gBreakdownExtras (M1 f) = gBreakdownExtras f
+
+
+instance GBreakdown b => GBreakdown (M1 C a b) where
+  gBreakdownExtras (M1 f) = gBreakdownExtras f
+
+instance (GBreakdown a, GBreakdown b) => GBreakdown (a :*: b) where
+  gBreakdownExtras (a :*: b) = gBreakdownExtras a <> gBreakdownExtras b
+
+instance (GBreakdown a, GBreakdown b) => GBreakdown (a :+: b) where
+  gBreakdownExtras = \case
+    L1 a -> gBreakdownExtras a
+    R1 a -> gBreakdownExtras a
+
+instance (Hashable a, Typeable a, Breakdown a) => GBreakdown (K1 R a)  where
+  gBreakdownExtras (K1 c) = NEL.toList $ breakdown c
