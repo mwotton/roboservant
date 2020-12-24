@@ -54,3 +54,13 @@ tests:
     - hspec
     - hspec-core
     - http-api-data
+
+  example:
+    main: Example.lhs
+    source-dirs: .
+
+    dependencies:
+      - roboservant
+      - hspec
+    build-depends:  base, markdown-unlit
+    ghc-options:    -pgmL markdown-unlit

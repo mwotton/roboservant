@@ -7,10 +7,7 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE StandaloneDeriving #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE TypeOperators #-}
@@ -18,10 +15,8 @@
 {-# LANGUAGE CPP #-}
 module Roboservant.Types.ReifiedApi where
 
-
 import Control.Monad.Except (runExceptT)
 import Data.Bifunctor
--- import Data.Dependent.Sum
 import Data.Dynamic (Dynamic)
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty)
@@ -165,7 +160,6 @@ instance
    tagType (Argument (buildFrom @(IfRequiredLenient T.Text mods paramType)))
       V.:& reifiedEndpointArguments @endpoint
 
-
 instance
   ( BuildFrom (IfRequiredLenient T.Text mods headerType)
   , ToReifiedEndpoint endpoint
@@ -178,8 +172,6 @@ instance
    tagType (Argument (buildFrom @(IfRequiredLenient T.Text mods headerType)))
       V.:& reifiedEndpointArguments @endpoint
 
-
--- this isn't happy in 0.16.2
 #if MIN_VERSION_servant(0,17,0)
 instance
   ( BuildFrom (IfLenient String mods captureType)
@@ -204,7 +196,6 @@ instance
       V.:& reifiedEndpointArguments @endpoint
 
 #endif
--- caching for merge
 
 instance
   ( BuildFrom (IfLenient String mods requestType)

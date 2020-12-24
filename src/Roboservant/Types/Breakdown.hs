@@ -31,7 +31,7 @@ class Breakdown x where
   breakdownExtras :: x -> [(Dynamic,Int)]
 
 instance (Hashable x, Typeable x) => Breakdown (Atom x) where
-  breakdownExtras (Atom x) = [(toDyn x, hash x)]
+  breakdownExtras _ = []
 
 deriving via (Atom ()) instance Breakdown ()
 deriving via (Atom Int) instance Breakdown Int
@@ -48,7 +48,6 @@ instance GBreakdown f =>  GBreakdown (M1 S c f ) where
 
 instance GBreakdown b => GBreakdown (M1 D a b) where
   gBreakdownExtras (M1 f) = gBreakdownExtras f
-
 
 instance GBreakdown b => GBreakdown (M1 C a b) where
   gBreakdownExtras (M1 f) = gBreakdownExtras f

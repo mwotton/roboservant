@@ -11,7 +11,6 @@ module Roboservant.Types.FlattenServer where
 
 import Servant
 
-
 data Bundled endpoints where
   AnEndpoint :: Server endpoint -> Bundled endpoints -> Bundled (endpoint ': endpoints)
   NoEndpoints :: Bundled '[]

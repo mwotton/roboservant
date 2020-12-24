@@ -1,7 +1,6 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
-{-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE DerivingVia #-}
@@ -15,14 +14,13 @@ import qualified Post
 import qualified Product
 import qualified Breakdown
 
-import Test.Hspec.Core.Spec
-
-import Data.Dynamic(toDyn,Typeable,Dynamic)
+import Test.Hspec.Core.Spec(ResultStatus(Failure,Success),resultStatus,itemExample,FailureReason(Reason),mapSpecItem_)
+import Data.Dynamic(toDyn)
 import qualified Roboservant as RS
 import Test.Hspec
-import Data.Void
-import Data.Maybe
-import Data.Hashable
+import Data.Void ( Void )
+import Data.Maybe ( isNothing )
+import Data.Hashable ( Hashable(hash) )
 
 main :: IO ()
 main = hspec spec
@@ -101,27 +99,6 @@ serverFailure = \case
     in failureReason /= RS.NoPossibleMoves
   _ -> False
 
-    -- describe "can build from pieces" $ do
-    --   it "should find a failure that requires some assembly" $ do
-    --     RS.fuzz @RS.BuildFrom.Api RS.BuildFrom.server defaultConfig noCheck
-    --       >>= (`shouldSatisfy` isJust)
-
-
-
-  -- -- -- The UnsafeIO checker does not actually really use the contextually aware stuff, though it
-  -- -- -- could: it's mostly here to show how to test for concurrency problems.
-  -- describe "concurrency bugs" $ do
-  --   before UnsafeIO.makeServer $ do
-  --     describe "sequential checking" $ do
-  --       it "safe use" $ \unsafeServer -> do
-  --         hedgehog $ RS.prop_sequential @UnsafeIO.UnsafeApi unsafeServer []
-
-  --     modifyMaxSuccess (const 10000) $
-  --       shouldFail $
-  --         describe "concurrent" $ do
-  --           it "concurrent, dangerous use" $ \unsafeServer -> do
-  --             RS.prop_concurrent @UnsafeIO.UnsafeApi unsafeServer []
-
 
 deriving via (RS.Atom Foo.Foo) instance RS.Breakdown Foo.Foo
 deriving via (RS.Atom Foo.Foo) instance RS.BuildFrom Foo.Foo
@@ -143,19 +120,6 @@ deriving via (RS.Atom Post.FooPost) instance RS.Breakdown Post.FooPost
 deriving via (RS.Compound Product.Foo) instance RS.BuildFrom Product.Foo
 deriving via (RS.Compound Breakdown.Foo) instance RS.Breakdown Breakdown.Foo
 deriving via (RS.Compound Breakdown.SomeSum) instance RS.Breakdown Breakdown.SomeSum
-
-
-
---deriving via (Compound RS.BuildFrom.Wrapped) instance RS.BuildFrom RS.BuildFrom.Wrapped
---deriving via (Compound RS.BuildFrom.Wrapped) instance RS.Breakdown RS.BuildFrom.Wrapped
-
-
-
--- deriving via (RS.Atom Void) instance RS.BuildFrom Void
-
--- instance RS.Breakdown Post.FooPost
--- instance RS.BuildFrom Post.FooPost
-
 
 -- | `shouldFail` allows you to assert that a given `Spec` should contain at least one failing test.
 --   this is often useful when testing tests.

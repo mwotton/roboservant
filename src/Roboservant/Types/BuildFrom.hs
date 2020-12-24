@@ -9,13 +9,6 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
-
-
-
-
-
-
-
 module Roboservant.Types.BuildFrom where
 
 import Control.Monad(filterM)
@@ -29,8 +22,6 @@ import Roboservant.Types.Internal
 import Data.Hashable
 import qualified Data.IntSet as IntSet
 import GHC.Generics
--- import Roboservant.Types.GBuildFrom(GBuildFrom(..))
-
 
 buildFrom :: forall x . (Hashable x, BuildFrom x, Typeable x) => Stash -> Maybe (StashValue x)
 buildFrom = buildStash . buildFrom'
@@ -73,9 +64,9 @@ deriving via (Compound (Maybe x)) instance (Typeable x, Hashable x, BuildFrom x)
 -- this isn't wonderful, but we need a hand-rolled instance for recursive datatypes right now.
 -- with an arbitrary-ish interface, we could use a size parameter, rng access etc.
 instance (BuildFrom x) => BuildFrom [x] where
-  extras stash =  map (\xs -> (concatMap fst xs,map snd xs)) $ powerset $  take 3 $ extras @x stash
+  extras stash =  map (\xs -> (concatMap fst xs,map snd xs)) $ powerset $ extras @x stash
     where
-      powerset xs = filterM (\_ -> [True, False]) xs
+      powerset xs = filterM (const [True, False]) xs
 
 instance (Hashable x, Typeable x, Generic x, GBuildFrom (Rep x)) => BuildFrom (Compound (x::Type)) where
   extras stash = fmap (Compound . to) <$> gExtras stash
@@ -83,23 +74,19 @@ instance (Hashable x, Typeable x, Generic x, GBuildFrom (Rep x)) => BuildFrom (C
 deriving via (Atom Int) instance BuildFrom Int
 deriving via (Atom Char) instance BuildFrom Char
 
-
 class GBuildFrom (f :: k -> *)  where
   gExtras :: Stash -> [([Provenance], f a)]
-
 
 instance GBuildFrom b => GBuildFrom (M1 D a b) where
   gExtras = fmap (fmap M1) . gExtras
 
+-- not recursion safe!
 instance (GBuildFrom a, GBuildFrom b) => GBuildFrom (a :+: b) where
   gExtras stash = (fmap L1 <$> gExtras stash)
                <> (fmap R1 <$> gExtras stash)
 
 instance (GBuildFrom a, GBuildFrom b) => GBuildFrom (a :*: b) where
   gExtras stash = [ (pa<>pb, a' :*: b')  | (pa,a') <- gExtras stash , (pb,b') <- gExtras stash]
-
-
-
 
 instance GBuildFrom b => GBuildFrom (M1 C a b) where
   gExtras =fmap (fmap M1) . gExtras
