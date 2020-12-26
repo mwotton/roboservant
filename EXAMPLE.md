@@ -45,16 +45,14 @@ server introduce = introduce :<|> combine :<|> eliminate
       | otherwise = pure ()
 ```
 
-Our tests would usually be in a separate file:
+In the test file, we first define the configuration:
 
 ```haskell
-
-
 defaultConfig :: Config
 defaultConfig = Config {
   -- you can pass extra values in using the seed argument. This can be useful
   -- for things that might not be produceable within the api, like auth tokens.
-    seed = []
+    seed = [hashedDyn "blah"]
   , maxRuntime = 0.5
   -- if we get to 1000 interactions with the api, call it quits.
   , maxReps = 1000
@@ -65,6 +63,11 @@ defaultConfig = Config {
   , coverageThreshold = 0
   }
 
+```
+
+and the tests: the faulty server should fail and the good server should pass.
+
+```haskell
 spec = describe "example" $ do
   it "good server should not fail" $ do
     fuzz @Api goodServer defaultConfig { coverageThreshold = 0.99 } (pure ())
@@ -91,14 +94,13 @@ build it up from components.
 ```haskell
 deriving via (Compound B) instance BuildFrom B
 deriving via (Atom B) instance Breakdown B
-
-
-main = hspec spec
 ```
 
-finally some uninteresting utilities
+finally some uninteresting utilities and the entrypoint
 
 ```haskell
+main = hspec spec
+
 serverFailure :: Maybe Report -> Bool
 serverFailure c = case c of
   Just Report{..} ->
