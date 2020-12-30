@@ -1,5 +1,6 @@
-# nb: 16.8 doesn't work because the version of servant is too old to have FoldLenient', fixme.
-resolver: lts-16.16
+resolver: lts-16.27
+# bit faster on ReifiedApi stuff which is unfortunately terribly slow.
+compiler: ghc-8.10.3
 packages:
 - .
 

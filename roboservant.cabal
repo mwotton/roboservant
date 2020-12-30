@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8de468df6e784f3723af9155bba9da9f43659b7d4e8e465fdac26eafcb0d4306
+-- hash: 1a4c7ba230ea0cde1208ffe68cfb5433046265dea94f292c81d73644caa87cd6
 
 name:           roboservant
 version:        0.1.0.2
@@ -101,6 +101,7 @@ test-suite roboservant-test
       Breakdown
       Foo
       Headers
+      Nested
       Post
       Product
       Seeded

@@ -13,6 +13,7 @@ import qualified Headers
 import qualified Post
 import qualified Product
 import qualified Breakdown
+import qualified Nested
 
 import Test.Hspec.Core.Spec(ResultStatus(Failure,Success),resultStatus,itemExample,FailureReason(Reason),mapSpecItem_)
 import Data.Dynamic(toDyn)
@@ -90,6 +91,14 @@ spec = do
     it "handles sums" $ do
       RS.fuzz @Breakdown.SumApi Breakdown.sumServer defaultConfig noCheck
         >>= (`shouldSatisfy` serverFailure)
+
+  describe "flattening" $ do
+    -- | we don't actually do much here, this is just here to document the appropriate response
+    --   if you get a type error with a nested api.
+    it "can handle nested apis" $ do
+      RS.fuzz @(Nested.FlatApi) Nested.server defaultConfig { RS.coverageThreshold = 0.99 } noCheck
+        >>= (`shouldSatisfy` isNothing)
+
 
 
 serverFailure :: Maybe RS.Report -> Bool

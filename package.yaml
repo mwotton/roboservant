@@ -1,3 +1,4 @@
+
 name:                roboservant
 version:             0.1.0.2
 github:              "mwotton/roboservant"
@@ -62,5 +63,5 @@ tests:
     dependencies:
       - roboservant
       - hspec
-    build-depends:  base, markdown-unlit
+    # build-depends:  base, markdown-unlit
     ghc-options:    -pgmL markdown-unlit

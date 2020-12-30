@@ -19,9 +19,9 @@ class FlattenServer api where
   flattenServer :: Server api -> Bundled (Endpoints api)
 
 instance
-  ( Endpoints (endpoint :<|> api) ~ (endpoint ': Endpoints api),
-    Server (endpoint :<|> api) ~ (Server endpoint :<|> Server api),
-    FlattenServer api
+  ( Endpoints (endpoint :<|> api) ~ (endpoint ': Endpoints api)
+--  , Server (endpoint :<|> api) ~ (Server endpoint :<|> Server api)
+  , FlattenServer api
   ) =>
   FlattenServer (endpoint :<|> api)
   where
@@ -36,8 +36,9 @@ instance
   flattenServer server = server `AnEndpoint` NoEndpoints
 
 instance
-  ( HasServer (Verb method statusCode contentTypes responseType) '[],
-    Endpoints (Verb method statusCode contentTypes responseType) ~ '[Verb method statusCode contentTypes responseType]
+  (  Endpoints (Verb method statusCode contentTypes responseType) ~ '[Verb method statusCode contentTypes responseType],
+     HasServer (Verb method statusCode contentTypes responseType) '[]
+
   ) =>
   FlattenServer (Verb method statusCode contentTypes responseType)
   where
