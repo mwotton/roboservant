@@ -1,0 +1,80 @@
+{-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE DerivingVia #-}
+{-# LANGUAGE StandaloneDeriving #-}
+{-# LANGUAGE DeriveGeneric #-}
+
+
+import Roboservant
+import Servant
+import Data.Hashable
+import GHC.Generics
+import Data.Aeson
+
+data Input = Input1 { foo :: String }
+           | Input2 { bar :: Int  }
+  deriving (Generic, Eq)
+
+instance FromJSON Input
+instance ToJSON Input
+
+
+deriving via (Compound Input) instance Breakdown Input
+deriving via (Compound Input) instance BuildFrom Input
+
+
+-- deriving via (Atom Input) instance Breakdown Input
+-- deriving via (Atom Input) instance BuildFrom Input
+
+instance Hashable Input
+
+
+data Output = Output1 { ofoo :: String }
+            | Output2 { obar :: Int  }
+  deriving (Generic, Eq)
+
+instance FromJSON Output
+instance ToJSON Output
+
+instance Hashable Output
+
+deriving via (Compound Output) instance Breakdown Output
+deriving via (Compound Output) instance BuildFrom Output
+
+-- deriving via (Atom Output) instance Breakdown Output
+-- deriving via (Atom Output) instance BuildFrom Output
+
+
+handler :: Input -> Handler Output
+handler = pure . \case
+  Input1 foo -> Output1 foo
+  Input2 bar -> Output2 bar
+
+main =
+  -- 28s at 80 reps
+  -- fuzz @Api server defaultConfig (pure ())
+  pure ()
+
+-- 18.5s at 80 reps
+-- reifiedApi = toReifiedApi flattened endpoints
+
+flattened = flattenServer @Api server
+
+endpoints = Proxy @(Endpoints Api)
+
+defaultConfig :: Config
+defaultConfig = Config {
+  -- you can pass extra values in using the seed argument. This can be useful
+  -- for things that might not be produceable within the api, like auth tokens.
+    seed = [hashedDyn "blah"]
+  , maxRuntime = 0.5
+  -- if we get to 1000 interactions with the api, call it quits.
+  , maxReps = 1000
+  -- if you're using this inside quickcheck or hedgehog, you might want to set this
+  -- from their seed to make sure it stays deterministic
+  , rngSeed = 0
+  -- 0 to 100: fail tests if we hit less than this percentage of endpoints.
+  , coverageThreshold = 0
+  }
