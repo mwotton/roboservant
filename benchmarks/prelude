@@ -52,17 +52,7 @@ handler = pure . \case
   Input1 foo -> Output1 foo
   Input2 bar -> Output2 bar
 
-main =
-  -- 28s at 80 reps
-  -- fuzz @Api server defaultConfig (pure ())
-  pure ()
-
--- 18.5s at 80 reps
--- reifiedApi = toReifiedApi flattened endpoints
-
-flattened = flattenServer @Api server
-
-endpoints = Proxy @(Endpoints Api)
+main = fuzz @Api server defaultConfig (pure ())
 
 defaultConfig :: Config
 defaultConfig = Config {

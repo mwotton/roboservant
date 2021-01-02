@@ -6,6 +6,7 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE UndecidableInstances #-}
+-- | terrible name, this really just pulls stuff out where we can fiddle with it.
 
 module Roboservant.Types.FlattenServer where
 
@@ -18,10 +19,10 @@ data Bundled endpoints where
 class FlattenServer api where
   flattenServer :: Server api -> Bundled (Endpoints api)
 
+
 instance
-  ( Endpoints (endpoint :<|> api) ~ (endpoint ': Endpoints api)
---  , Server (endpoint :<|> api) ~ (Server endpoint :<|> Server api)
-  , FlattenServer api
+  ( FlattenServer api
+  , Endpoints endpoint ~ '[endpoint]
   ) =>
   FlattenServer (endpoint :<|> api)
   where

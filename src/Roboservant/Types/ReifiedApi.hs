@@ -55,11 +55,11 @@ type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
 tagType :: Typeable a => f a -> TypedF f a
 tagType = (R.typeRep :*:)
 
-class ToReifiedApi (endpoints :: [*]) where
+class ToReifiedApi (endpoints ) where
+
   toReifiedApi :: Bundled endpoints -> Proxy endpoints -> ReifiedApi
 
-class ( V.Curried (EndpointArgs endpoint) (Handler (EndpointRes endpoint)) ~ Server endpoint
-      , V.RecordToList (EndpointArgs endpoint)
+class ( V.RecordToList (EndpointArgs endpoint)
       , V.RMap (EndpointArgs endpoint)
       ) => ToReifiedEndpoint (endpoint :: *) where
   type EndpointArgs endpoint :: [Type]
@@ -72,10 +72,11 @@ instance ToReifiedApi '[] where
 
 instance
   ( Typeable (EndpointRes endpoint)
+
   , NormalizeFunction (ServerT endpoint Handler)
   , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either ServerError (NonEmpty (Dynamic,Int))))
   , ToReifiedEndpoint endpoint
-  , ToReifiedApi endpoints, Typeable (ServerT endpoint Handler)
+  , ToReifiedApi endpoints
   ) =>
   ToReifiedApi (endpoint : endpoints)
   where
