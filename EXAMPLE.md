@@ -50,11 +50,22 @@ In the test file, we first define the tests: the faulty server should fail and t
 ```haskell
 spec = describe "example" $ do
   it "good server should not fail" $ do
-    fuzz @Api goodServer defaultConfig { coverageThreshold = 0.99 }
+    fuzz @Api goodServer config
       >>= (`shouldSatisfy` isNothing)
   it "bad server should fail" $ do
-    fuzz @Api badServer defaultConfig { coverageThreshold = 0.99 }
+    fuzz @Api badServer config
       >>= (`shouldSatisfy` serverFailure)
+
+config = defaultConfig
+  {
+    -- we expect to be able to cover the api from our starting point:
+    -- this will fail the test if we don't.
+    coverageThreshold = 0.99
+  }
+
+-- there are other tweakable things in the config, like maximum runtime, reps,
+-- per-request healthchecks, and verbose logging. Have a look at
+-- Roboservant.Types.Config for details.
 ```
 
 And unless we want to ship roboservant and all its dependencies to production, we also need
