@@ -14,7 +14,7 @@
 
 module Roboservant.Types.Breakdown where
 
-import Data.Dynamic (Dynamic, toDyn)
+import Data.Dynamic (Dynamic)
 import Data.Hashable
 import Data.Kind
 import Data.List.NonEmpty (NonEmpty (..))
