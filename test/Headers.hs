@@ -8,17 +8,19 @@
 module Headers where
 
 import Data.Aeson
+import Data.Hashable
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Servant
-import Data.Hashable
 
 newtype Foo = Foo Int
   deriving (Generic, Eq, Show, Typeable)
   deriving newtype (FromHttpApiData, ToHttpApiData)
 
 instance Hashable Foo
+
 instance ToJSON Foo
+
 instance FromJSON Foo
 
 type Api =
@@ -33,8 +35,7 @@ combine :: Maybe Foo -> Maybe Foo -> Handler Foo
 combine (Just (Foo a)) (Just (Foo b)) = pure (Foo (a + b))
 combine (Just a) Nothing = pure a
 combine Nothing (Just a) = pure a
-combine Nothing Nothing  = pure (Foo 1)
-
+combine Nothing Nothing = pure (Foo 1)
 
 eliminate :: Foo -> Handler ()
 eliminate (Foo a)

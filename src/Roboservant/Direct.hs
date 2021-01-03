@@ -2,6 +2,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -9,7 +10,6 @@
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
-{-# LANGUAGE PolyKinds #-}
 
 module Roboservant.Direct
   ( fuzz,
@@ -25,25 +25,30 @@ module Roboservant.Direct
 where
 
 import Control.Exception.Lifted
-    ( SomeException,
-      throw,
-      Exception,
-      SomeAsyncException,
-      catch,
-      catches,
-      handle,
-      Handler(Handler) )
+  ( Exception,
+    Handler (Handler),
+    SomeAsyncException,
+    SomeException,
+    catch,
+    catches,
+    handle,
+    throw,
+  )
 import Control.Monad.State.Strict
-    ( MonadIO(..), StateT(runStateT), modify', MonadState(get) )
+  ( MonadIO (..),
+    MonadState (get),
+    StateT (runStateT),
+    modify',
+  )
 import Control.Monad.Trans.Control (MonadBaseControl)
 import qualified Data.Dependent.Map as DM
-import Data.Dynamic ( Dynamic(..) )
+import Data.Dynamic (Dynamic (..))
 import qualified Data.IntSet as IntSet
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NEL
 import Data.Maybe (mapMaybe)
 import qualified Data.Set as Set
-import Data.Time.Clock ( addUTCTime, getCurrentTime, UTCTime )
+import Data.Time.Clock (UTCTime, addUTCTime, getCurrentTime)
 import qualified Data.Vinyl as V
 import qualified Data.Vinyl.Curry as V
 import qualified Data.Vinyl.Functor as V
@@ -59,8 +64,9 @@ import Roboservant.Types
     ToReifiedApi (..),
     TypedF,
   )
+import Roboservant.Types.Config
 import Servant (Endpoints, Proxy (Proxy), Server, ServerError (..))
-import System.Random ( mkStdGen, Random(randomR), StdGen )
+import System.Random (Random (randomR), StdGen, mkStdGen)
 import qualified Type.Reflection as R
 
 data RoboservantException
@@ -86,15 +92,6 @@ data FuzzOp
         provenance :: [Provenance]
       }
   deriving (Show, Eq)
-
-data Config
-  = Config
-      { seed :: [(Dynamic, Int)],
-        maxRuntime :: Double, -- seconds to test for
-        maxReps :: Integer,
-        rngSeed :: Int,
-        coverageThreshold :: Double
-      }
 
 data FuzzState
   = FuzzState
@@ -129,9 +126,8 @@ fuzz ::
   (FlattenServer api, ToReifiedApi (Endpoints api)) =>
   Server api ->
   Config ->
-  IO () ->
   IO (Maybe Report)
-fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
+fuzz server Config {..} = handle (pure . Just . formatException) $ do
   let path = []
       stash = addToStash seed mempty
       currentRng = mkStdGen rngSeed
@@ -140,7 +136,7 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
     runStateT
       (untilDone (maxReps, deadline) go <* (evaluateCoverage =<< get))
       FuzzState {..}
-  print stopreason
+  logInfo $ show stopreason
   pure Nothing
   where
     -- something less terrible later
@@ -150,12 +146,14 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
         (unlines [show failureType, show exception])
         r
     displayDiagnostics FuzzState {..} = liftIO $ do
-      putStrLn "api endpoints covered"
-      mapM_ print (Set.toList $ Set.fromList $ map apiOffset path)
-      putStrLn ""
-      putStrLn "types in stash"
-      DM.forWithKey_ (getStash stash) $ \_k v ->
-        print (NEL.length $ getStashValue v)
+      logInfo $ unlines $
+        ["api endpoints covered"]
+          <> (map show . Set.toList . Set.fromList $ map apiOffset path)
+          <> ["", "types in stash"]
+          <> DM.foldrWithKey (\_ v r -> (show . NEL.length . getStashValue $ v) : r) [] (getStash stash)
+    --        <> (map (show . NEL.length . getStashValue ) $ DM.assocs (getStash stash))
+    --        $ \_k v ->
+    --               (show . NEL.length $ getStashValue v))
 
     evaluateCoverage f@FuzzState {..}
       | coverage > coverageThreshold = pure ()
@@ -237,23 +235,22 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
       V.Rec (TypedF V.Identity) as ->
       m ()
     execute fuzzop func args = do
-      (liftIO . print . (fuzzop,) . stash) =<< get
+      (liftIO . logInfo . show . (fuzzop,) . stash) =<< get
       liftIO (V.runcurry' func argVals) >>= \case
         -- parameterise this
         Left (serverError :: ServerError) ->
           case errHTTPCode serverError of
             500 -> throw serverError
             _ ->
-              liftIO $ print ("ignoring non-500 error", serverError)
+              liftIO . logInfo . show $ ("ignoring non-500 error", serverError)
         Right (dyn :: NEL.NonEmpty (Dynamic, Int)) -> do
-          -- liftIO $ print ("storing", fmap dynTypeRep dyn)
           modify'
             ( \fs@FuzzState {..} ->
                 fs {stash = addToStash (NEL.toList dyn) stash}
             )
       where
         argVals = V.rmap (\(_ :*: V.Identity x) -> V.Identity x) args
-        -- argTypes = recordToList' (\(tr :*: _) -> R.SomeTypeRep tr) args
+    -- argTypes = recordToList' (\(tr :*: _) -> R.SomeTypeRep tr) args
     go ::
       (MonadState FuzzState m, MonadIO m, MonadBaseControl IO m) =>
       m ()
@@ -263,12 +260,12 @@ fuzz server Config {..} checker = handle (pure . Just . formatException) $ do
         [ Handler (\(e :: SomeAsyncException) -> throw e),
           Handler
             ( \(e :: SomeException) -> do
-                displayDiagnostics =<< get
+                -- displayDiagnostics =<< get
                 throw . RoboservantException ServerCrashed (Just e) =<< get
             )
         ]
       catch
-        (liftIO checker)
+        (liftIO healthCheck)
         (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e) =<< get)
 
 addToStash ::

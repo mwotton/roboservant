@@ -45,35 +45,15 @@ server introduce = introduce :<|> combine :<|> eliminate
       | otherwise = pure ()
 ```
 
-In the test file, we first define the configuration:
-
-```haskell
-defaultConfig :: Config
-defaultConfig = Config {
-  -- you can pass extra values in using the seed argument. This can be useful
-  -- for things that might not be produceable within the api, like auth tokens.
-    seed = [hashedDyn "blah"]
-  , maxRuntime = 0.5
-  -- if we get to 1000 interactions with the api, call it quits.
-  , maxReps = 1000
-  -- if you're using this inside quickcheck or hedgehog, you might want to set this
-  -- from their seed to make sure it stays deterministic
-  , rngSeed = 0
-  -- 0 to 100: fail tests if we hit less than this percentage of endpoints.
-  , coverageThreshold = 0
-  }
-
-```
-
-and the tests: the faulty server should fail and the good server should pass.
+In the test file, we first define the tests: the faulty server should fail and the good server should pass.
 
 ```haskell
 spec = describe "example" $ do
   it "good server should not fail" $ do
-    fuzz @Api goodServer defaultConfig { coverageThreshold = 0.99 } (pure ())
+    fuzz @Api goodServer defaultConfig { coverageThreshold = 0.99 }
       >>= (`shouldSatisfy` isNothing)
   it "bad server should fail" $ do
-    fuzz @Api badServer defaultConfig { coverageThreshold = 0.99 } (pure ())
+    fuzz @Api badServer defaultConfig { coverageThreshold = 0.99 }
       >>= (`shouldSatisfy` serverFailure)
 ```
 

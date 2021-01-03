@@ -7,16 +7,15 @@
 
 module UnsafeIO where
 
-import Data.Aeson()
-import Servant
-import Data.IORef (writeIORef, IORef, readIORef, newIORef)
-import Control.Monad.Trans (MonadIO(liftIO))
+import Control.Monad.Trans (MonadIO (liftIO))
+import Data.Aeson ()
 import qualified Data.ByteString.Lazy.Char8 as BL8
-
+import Data.IORef (IORef, newIORef, readIORef, writeIORef)
+import Servant
 
 type UnsafeApi =
   "add" :> Get '[JSON] ()
-  :<|> "healthcheck" :> Get '[JSON] ()
+    :<|> "healthcheck" :> Get '[JSON] ()
 
 healthcheck :: IORef Int -> Handler ()
 healthcheck ref = do
@@ -25,17 +24,16 @@ healthcheck ref = do
     0 -> pure ()
     n -> throwError $ err500 {errBody = "observed inconsistency: " <> (BL8.pack $ show n)}
 
-
-
 makeServer :: IO (Server UnsafeApi)
 makeServer = do
   ref <- newIORef 0
-  pure $ unsafeMunge ref
-    :<|> healthcheck ref
+  pure $
+    unsafeMunge ref
+      :<|> healthcheck ref
 
 unsafeMunge :: IORef Int -> Handler ()
 unsafeMunge ref = liftIO $ do
   t <- readIORef ref
-  writeIORef ref (t+1)
+  writeIORef ref (t + 1)
   t2 <- readIORef ref
-  writeIORef ref (t2-1)
+  writeIORef ref (t2 -1)

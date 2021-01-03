@@ -10,14 +10,12 @@ module Nested where
 import Servant
 import Servant.API.Flatten
 
-
 type Api =
-  ("one" :> Post '[JSON] Int
-   :<|> "two" :> Post '[JSON] Int
+  ( "one" :> Post '[JSON] Int
+      :<|> "two" :> Post '[JSON] Int
   )
-  :<|> (
-  "three" :> Post '[JSON] Int
-  )
+    :<|> ( "three" :> Post '[JSON] Int
+         )
 
 type FlatApi = Flat Api
 
