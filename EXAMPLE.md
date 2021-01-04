@@ -64,7 +64,7 @@ config = defaultConfig
   }
 
 -- there are other tweakable things in the config, like maximum runtime, reps,
--- per-request healthchecks, and verbose logging. Have a look at
+-- per-request healthchecks, seeds, and verbose logging. Have a look at
 -- Roboservant.Types.Config for details.
 ```
 
