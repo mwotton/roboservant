@@ -45,7 +45,7 @@ server introduce = introduce :<|> combine :<|> eliminate
 ```
 
 We have a "good" server, that never generates anything other than a 0. This means repeated application of
-the combination/addition rule can never bring us to the dangerous state of numbers larger than 100.
+the combination/addition rule can never bring us to the dangerous state of numbers larger than 10.
 
 ``` haskell
 goodServer, badServer :: Server Api
