@@ -19,8 +19,13 @@ sessions and verify properties that should hold over them.
 In essence, ```fuzz @Api yourServer config``` will make a bunch of
 calls to your API, and record the results in a type-indexed
 dictionary. This means that they are now available for the
-prerequisites of other call, so as you proceed, more and more api
+prerequisites of other calls, so as you proceed, more and more api
 calls become possible.
+
+We explicitly do not try to come up with plausible values that haven't
+somehow come back from the API. That's straying into QC/Hedgehog
+territory: if you want that, come up with the values on that side, and
+set them as seeds in the configuration.
 
 ### what does it mean to be "available"?
 
@@ -65,7 +70,10 @@ Sometimes there are values we'd like to smuggle into the API that are
 not derivable from within the API itself: sometimes this is a warning
 sign that your API is incomplete, but it can be quite reasonable to
 require identifying credentials within an API and not provide a way to
-get them. For those cases, override the `seed` in the `Config` with a
+get them. It might also be reasonable to have some sample values that
+the user is expected to come up with.
+
+For those cases, override the `seed` in the `Config` with a
 list of seed values, suitably hashed:
 
 ``` haskell

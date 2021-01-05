@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 3eb8db6b6899ba904be853bb6865aba4f208077587e89f5377df3169743034b0
+-- hash: 48773018ec618e9eba02a126e3aeb93781a1d68ce28e2c405c35e9536bf94f70
 
 name:           roboservant
 version:        0.1.0.2
@@ -33,7 +33,6 @@ library
       Roboservant.Types.Breakdown
       Roboservant.Types.BuildFrom
       Roboservant.Types.Config
-      Roboservant.Types.Config.Internal
       Roboservant.Types.FlattenServer
       Roboservant.Types.Internal
       Roboservant.Types.ReifiedApi
@@ -72,6 +71,8 @@ test-suite example
   hs-source-dirs:
       ./.
   ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -pgmL markdown-unlit
+  build-tool-depends:
+      markdown-unlit:markdown-unlit
   build-depends:
       base >=4.7 && <5
     , bytestring

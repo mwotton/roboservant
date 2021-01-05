@@ -63,5 +63,6 @@ tests:
     dependencies:
       - roboservant
       - hspec
-    # build-depends:  base, markdown-unlit
     ghc-options:    -pgmL markdown-unlit
+
+    build-tools:  markdown-unlit
