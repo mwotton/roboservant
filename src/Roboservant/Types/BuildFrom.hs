@@ -61,9 +61,11 @@ deriving via (Compound (Maybe x)) instance (Typeable x, Hashable x, BuildFrom x)
 -- this isn't wonderful, but we need a hand-rolled instance for recursive datatypes right now.
 -- with an arbitrary-ish interface, we could use a size parameter, rng access etc.
 instance (BuildFrom x) => BuildFrom [x] where
-  extras stash = map (\xs -> (concatMap fst xs, map snd xs)) $ powerset $ extras @x stash
+  extras stash = map (\xs -> (concatMap fst xs, map snd xs)) $ notpowerset $ extras @x stash
     where
-      powerset xs = filterM (const [True, False]) xs
+      -- powerset creates way too much stuff. something better here eventually.
+      notpowerset xs = xs:map pure xs
+
 
 instance (Hashable x, Typeable x, Generic x, GBuildFrom (Rep x)) => BuildFrom (Compound (x :: Type)) where
   extras stash = fmap (Compound . to) <$> gExtras stash

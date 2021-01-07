@@ -26,19 +26,15 @@ instance
   FlattenServer (endpoint :<|> api)
   where
   flattenServer (endpoint :<|> server) = endpoint `AnEndpoint` flattenServer @api server
-
+ 
 instance
-  ( HasServer (x :> api) '[],
-    Endpoints (x :> api) ~ '[x :> api]
-  ) =>
+ (
+   Endpoints api ~ '[api]
+ ) =>
   FlattenServer (x :> api)
   where
   flattenServer server = server `AnEndpoint` NoEndpoints
 
-instance
-  ( Endpoints (Verb method statusCode contentTypes responseType) ~ '[Verb method statusCode contentTypes responseType],
-    HasServer (Verb method statusCode contentTypes responseType) '[]
-  ) =>
-  FlattenServer (Verb method statusCode contentTypes responseType)
+instance FlattenServer (Verb method statusCode contentTypes responseType)
   where
   flattenServer server = server `AnEndpoint` NoEndpoints

@@ -102,6 +102,12 @@ we would want to show that distinction in a visible way: it's possible
 that other calls that don't have direct data dependencies were
 important, but we definitely know we need the direct data dependencies.
 
+The provenance stuff is a bit underbaked. It should at least pull a
+representation of the route chosen rather than just an integer index.
+
 It would also be nice to have a robust strategy for deriving recursive
 datatypes, or at least rejecting attempts to generate them that don't
 end in an infinite loop.
+
+Currently the `FlattenServer` instance for `:>` is quadratic. It would
+be nice to fix this but I lack the art.
