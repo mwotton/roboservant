@@ -43,9 +43,6 @@ deriving via (Atom [Char]) instance Breakdown [Char]
 
 deriving via (Compound (Maybe x)) instance (Typeable x, Hashable x, Breakdown x) => Breakdown (Maybe x)
 
-instance (Hashable x, Typeable x, Breakdown x) => Breakdown [x] where
-  breakdownExtras stash =  concatMap (NEL.toList . breakdown) stash
-
 
 class GBreakdown (f :: k -> *) where
   gBreakdownExtras :: f a -> [(Dynamic, Int)]
