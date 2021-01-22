@@ -38,8 +38,7 @@ instance (Hashable x, Typeable x) => Breakdown (Atom x) where
 deriving via (Atom ()) instance Breakdown ()
 
 deriving via (Atom Int) instance Breakdown Int
-
-deriving via (Atom [Char]) instance Breakdown [Char]
+deriving via (Atom Char) instance Breakdown Char
 
 deriving via (Compound (Maybe x)) instance (Typeable x, Hashable x, Breakdown x) => Breakdown (Maybe x)
 
