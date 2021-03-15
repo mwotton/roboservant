@@ -12,7 +12,7 @@
 {-# LANGUAGE UndecidableInstances #-}
 
 module Roboservant.Direct
-  ( fuzz,
+  ( fuzz',
     Config (..),
     -- TODO come up with something smarter than exporting all this, we should
     -- have some nice error-display functions
@@ -56,16 +56,15 @@ import GHC.Generics ((:*:) (..))
 import Roboservant.Types
   ( ApiOffset (..),
     Argument (..),
-    FlattenServer (..),
+    InteractionError,
     Provenance (..),
+    ReifiedApi,
     ReifiedEndpoint (..),
     Stash (..),
     StashValue (..),
-    ToReifiedApi (..),
     TypedF,
   )
 import Roboservant.Types.Config
-import Servant (Endpoints, Proxy (Proxy), Server, ServerError (..))
 import System.Random (Random (randomR), StdGen, mkStdGen)
 import qualified Type.Reflection as R
 
@@ -105,7 +104,7 @@ data EndpointOption
   = forall as.
     (V.RecordToList as, V.RMap as) =>
     EndpointOption
-      { eoCall :: V.Curried as (IO (Either ServerError (NonEmpty (Dynamic, Int)))),
+      { eoCall :: V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic, Int)))),
         eoArgs :: V.Rec (TypedF StashValue) as
       }
 
@@ -121,13 +120,18 @@ data Report
       }
   deriving (Show)
 
-fuzz ::
-  forall api.
-  (FlattenServer api, ToReifiedApi (Endpoints api)) =>
-  Server api ->
+
+
+-- fuzzClient :: Client api -> Config -> IO (Maybe Report)
+-- fuzzClient = undefined
+
+
+
+fuzz' ::
+  ReifiedApi ->
   Config ->
   IO (Maybe Report)
-fuzz server Config {..} = handle (pure . Just . formatException) $ do
+fuzz' reifiedApi Config {..} = handle (pure . Just . formatException) $ do
   let path = []
       stash = addToStash seed mempty
       currentRng = mkStdGen rngSeed
@@ -173,7 +177,7 @@ fuzz server Config {..} = handle (pure . Just . formatException) $ do
         else do
           _ <- action
           untilDone (n -1, deadline) action
-    reifiedApi = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
+
     routeCount = length reifiedApi
     elementOrFail ::
       (MonadState FuzzState m, MonadIO m) =>
@@ -190,7 +194,7 @@ fuzz server Config {..} = handle (pure . Just . formatException) $ do
       ( forall as.
         (V.RecordToList as, V.RMap as) =>
         FuzzOp ->
-        V.Curried as (IO (Either ServerError (NonEmpty (Dynamic, Int)))) ->
+        V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic, Int)))) ->
         V.Rec (TypedF V.Identity) as ->
         m r
       ) ->
@@ -231,18 +235,13 @@ fuzz server Config {..} = handle (pure . Just . formatException) $ do
     execute ::
       (MonadState FuzzState m, MonadIO m, V.RecordToList as, V.RMap as) =>
       FuzzOp ->
-      V.Curried as (IO (Either ServerError (NonEmpty (Dynamic, Int)))) ->
+      V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic, Int)))) ->
       V.Rec (TypedF V.Identity) as ->
       m ()
     execute fuzzop func args = do
       (liftIO . logInfo . show . (fuzzop,) . stash) =<< get
       liftIO (V.runcurry' func argVals) >>= \case
-        -- parameterise this
-        Left (serverError :: ServerError) ->
-          case errHTTPCode serverError of
-            500 -> throw serverError
-            _ ->
-              liftIO . logInfo . show $ ("ignoring non-500 error", serverError)
+        Left (e::InteractionError) -> throw e
         Right (dyn :: NEL.NonEmpty (Dynamic, Int)) -> do
           modify'
             ( \fs@FuzzState {..} ->

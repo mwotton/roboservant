@@ -14,6 +14,8 @@ module Roboservant.Types
     module Roboservant.Types.ReifiedApi,
     module Roboservant.Types.Internal,
     module Roboservant.Types.Config,
+    Atom, Compound
+    
   )
 where
 

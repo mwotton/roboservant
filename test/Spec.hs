@@ -17,6 +17,7 @@ import qualified Nested
 import qualified Post
 import qualified Product
 import qualified Roboservant as RS
+import qualified Roboservant.Server as RS
 import qualified Seeded
 import Test.Hspec
 import Test.Hspec.Core.Spec (FailureReason (Reason), ResultStatus (Failure, Success), itemExample, mapSpecItem_, resultStatus)

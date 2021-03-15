@@ -12,7 +12,6 @@
 
 module Roboservant.Types.BuildFrom where
 
-import Control.Monad (filterM)
 import qualified Data.Dependent.Map as DM
 import Data.Hashable
 import qualified Data.IntSet as IntSet
