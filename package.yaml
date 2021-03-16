@@ -55,7 +55,10 @@ tests:
     - hspec
     - hspec-core
     - http-api-data
-
+    - http-client
+    - hspec-wai
+    - wai
+    - warp
   example:
     main: Example.lhs
     source-dirs: .
@@ -63,6 +66,10 @@ tests:
     dependencies:
       - roboservant
       - hspec
+      - warp
+      - http-client
+      - aeson
+      - hspec-core
     ghc-options:    -pgmL markdown-unlit
 
     build-tools:  markdown-unlit

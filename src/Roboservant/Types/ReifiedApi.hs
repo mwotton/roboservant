@@ -1,3 +1,8 @@
+-- | Description: ways to build a reified api from a servant description.
+--
+--   arguably this could be more general and be abstracted away from even relying on servant
+--   but that's future work.
+
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE DerivingStrategies #-}
@@ -15,25 +20,22 @@
 {-# LANGUAGE CPP #-}
 module Roboservant.Types.ReifiedApi where
 
-import Control.Monad.Except (runExceptT)
-import Data.Bifunctor
 import Data.Dynamic (Dynamic)
-import Data.Kind
+import Control.Exception(Exception)
 import Data.List.NonEmpty (NonEmpty)
 import Data.Typeable (Typeable)
 import GHC.Generics ((:*:)(..))
-import GHC.TypeLits (Symbol)
 import Roboservant.Types.Internal
 import Roboservant.Types.Breakdown
 import Roboservant.Types.BuildFrom
-import Roboservant.Types.FlattenServer
+import Data.Kind
 import Servant
 import Servant.API.Modifiers(FoldRequired,FoldLenient)
+import GHC.TypeLits (Symbol)
 import qualified Data.Text as T
 import qualified Data.Vinyl as V
 import qualified Data.Vinyl.Curry as V
 import qualified Type.Reflection as R
-import Data.Hashable(Hashable)
 
 newtype ApiOffset = ApiOffset Int
   deriving (Eq, Show, Ord)
@@ -47,17 +49,8 @@ newtype Argument a = Argument
 
 data ReifiedEndpoint = forall as. (V.RecordToList as, V.RMap as) => ReifiedEndpoint
     { reArguments    :: V.Rec (TypedF Argument) as
-    , reEndpointFunc :: V.Curried as (IO (Either ServerError (NonEmpty (Dynamic,Int))))
+    , reEndpointFunc :: V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic,Int))))
     }
-
-type ReifiedApi = [(ApiOffset, ReifiedEndpoint)]
-
-tagType :: Typeable a => f a -> TypedF f a
-tagType = (R.typeRep :*:)
-
-class ToReifiedApi (endpoints ) where
-
-  toReifiedApi :: Bundled endpoints -> Proxy endpoints -> ReifiedApi
 
 class ( V.RecordToList (EndpointArgs endpoint)
       , V.RMap (EndpointArgs endpoint)
@@ -67,41 +60,16 @@ class ( V.RecordToList (EndpointArgs endpoint)
 
   reifiedEndpointArguments :: V.Rec (TypedF Argument) (EndpointArgs endpoint)
 
-instance ToReifiedApi '[] where
-  toReifiedApi NoEndpoints _ = []
 
-instance
-  ( Typeable (EndpointRes endpoint)
+tagType :: Typeable a => f a -> TypedF f a
+tagType = (R.typeRep :*:)
 
-  , NormalizeFunction (ServerT endpoint Handler)
-  , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either ServerError (NonEmpty (Dynamic,Int))))
-  , ToReifiedEndpoint endpoint
-  , ToReifiedApi endpoints
-  ) =>
-  ToReifiedApi (endpoint : endpoints)
-  where
-  toReifiedApi (endpoint `AnEndpoint` endpoints) _ =
-    (0, ReifiedEndpoint
-         { reArguments    = reifiedEndpointArguments @endpoint
-         , reEndpointFunc = normalize endpoint
-         }
-    )
-      : (map . first) (+1)
-        (toReifiedApi endpoints (Proxy @endpoints))
+newtype InteractionError = InteractionError T.Text
+  deriving Show
+instance Exception InteractionError
 
-class NormalizeFunction m where
-  type Normal m
-  normalize :: m -> Normal m
 
-instance NormalizeFunction x => NormalizeFunction (r -> x) where
-  type Normal (r -> x) = r -> Normal x
-  normalize = fmap normalize
 
-instance (Typeable x, Hashable x, Breakdown x) => NormalizeFunction (Handler x) where
-  type Normal (Handler x) = IO (Either ServerError (NonEmpty (Dynamic,Int)))
-  normalize handler = (runExceptT . runHandler') handler >>= \case
-    Left serverError -> pure (Left serverError)
-    Right x -> pure $ Right $ breakdown x
 
 instance
   (Typeable responseType, Breakdown responseType) =>
