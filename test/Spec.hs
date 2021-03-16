@@ -29,7 +29,8 @@ import qualified Seeded
 import Test.Hspec
 import Test.Hspec.Core.Spec (FailureReason (Reason), ResultStatus (Failure, Success), itemExample, mapSpecItem_, resultStatus)
 import qualified Valid
-import Servant(Server,Proxy(..), serve)
+import Servant ( Server, Proxy(..), serve, Endpoints, HasServer )
+
 import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClient,ClientM)
 import Network.Wai(Application)
 import qualified Network.Wai.Handler.Warp as Warp

@@ -4,12 +4,9 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
-{-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
-{-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
@@ -36,5 +33,4 @@ fuzz s  = fuzz' (reifyServer s)
                     => Server api -> ReifiedApi
         reifyServer server = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
 --        reifyServer server = toReifiedApi server (Proxy @(Endpoints api))
-
 

@@ -3,7 +3,6 @@
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE NamedFieldPuns#-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
@@ -42,7 +41,10 @@ import Data.Hashable
 
 fuzz :: forall api . (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api)
      => ClientEnv -> Config -> IO (Maybe Report)
-fuzz clientEnv config  = fuzz' (toReifiedClientApi (flattenClient @api apiClient) (Proxy @(Endpoints api)) clientEnv ) config
+fuzz clientEnv
+  = fuzz'
+      (toReifiedClientApi
+         (flattenClient @api apiClient) (Proxy @(Endpoints api)) clientEnv)
   where apiClient = client (Proxy @api)
 
 
