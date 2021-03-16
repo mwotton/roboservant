@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: fa8c07f0c2fc10f18d3e925b8f702612c0c9fd81faa7942f901af388d509c231
+-- hash: 4c71b6b9460f4719791bb8e67f4a5398b807cd8d17c43dc69da806bb5ba9fb4b
 
 name:           roboservant
 version:        0.1.0.2
@@ -28,13 +28,13 @@ source-repository head
 library
   exposed-modules:
       Roboservant
+      Roboservant.Client
       Roboservant.Direct
       Roboservant.Server
       Roboservant.Types
       Roboservant.Types.Breakdown
       Roboservant.Types.BuildFrom
       Roboservant.Types.Config
-      Roboservant.Types.FlattenServer
       Roboservant.Types.Internal
       Roboservant.Types.ReifiedApi
       Roboservant.Types.ReifiedApi.Server
@@ -76,13 +76,16 @@ test-suite example
   build-tool-depends:
       markdown-unlit:markdown-unlit
   build-depends:
-      base >=4.7 && <5
+      aeson
+    , base >=4.7 && <5
     , bytestring
     , containers
     , dependent-map
     , dependent-sum
     , hashable
     , hspec
+    , hspec-core
+    , http-client
     , lifted-base
     , monad-control
     , mtl
@@ -97,6 +100,7 @@ test-suite example
     , time
     , unordered-containers
     , vinyl
+    , warp
   default-language: Haskell2010
 
 test-suite roboservant-test
@@ -126,7 +130,9 @@ test-suite roboservant-test
     , hashable
     , hspec
     , hspec-core
+    , hspec-wai
     , http-api-data
+    , http-client
     , lifted-base
     , monad-control
     , mtl
@@ -141,4 +147,6 @@ test-suite roboservant-test
     , time
     , unordered-containers
     , vinyl
+    , wai
+    , warp
   default-language: Haskell2010

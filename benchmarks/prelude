@@ -12,6 +12,7 @@ import Servant
 import Data.Hashable
 import GHC.Generics
 import Data.Aeson
+import Servant.API.Flatten
 
 data Input = Input1 { foo :: String }
            | Input2 { bar :: Int  }
@@ -52,19 +53,9 @@ handler = pure . \case
   Input1 foo -> Output1 foo
   Input2 bar -> Output2 bar
 
-main = fuzz @Api server defaultConfig (pure ())
+main =
+  --  fuzz @Api server defaultConfig 
+  pure ()
 
-defaultConfig :: Config
-defaultConfig = Config {
-  -- you can pass extra values in using the seed argument. This can be useful
-  -- for things that might not be produceable within the api, like auth tokens.
-    seed = [hashedDyn "blah"]
-  , maxRuntime = 0.5
-  -- if we get to 1000 interactions with the api, call it quits.
-  , maxReps = 1000
-  -- if you're using this inside quickcheck or hedgehog, you might want to set this
-  -- from their seed to make sure it stays deterministic
-  , rngSeed = 0
-  -- 0 to 100: fail tests if we hit less than this percentage of endpoints.
-  , coverageThreshold = 0
-  }
+f = flatten (Proxy @Api)
+

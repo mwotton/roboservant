@@ -65,6 +65,7 @@ import Roboservant.Types
     TypedF,
   )
 import Roboservant.Types.Config
+
 import System.Random (Random (randomR), StdGen, mkStdGen)
 import qualified Type.Reflection as R
 

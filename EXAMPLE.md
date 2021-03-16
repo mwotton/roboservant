@@ -13,22 +13,36 @@ Our api under test:
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE TypeApplications #-}
 
-import Roboservant
+import qualified Roboservant.Server as RS
+import qualified Roboservant.Client as RC
+import Servant.Client(ClientEnv, baseUrlPort, parseBaseUrl, mkClientEnv)
+import Network.HTTP.Client       (newManager, defaultManagerSettings)
+import Roboservant.Types
 import Test.Hspec
 import Servant
 import GHC.Generics
 import Data.Typeable
 import Data.Hashable
 import Data.Maybe(isNothing, isJust)
+import qualified Network.Wai.Handler.Warp as Warp
+import Data.Aeson(FromJSON,ToJSON)
 
 newtype A = A Int
   deriving (Generic, Eq, Show, Typeable)
   deriving newtype (Hashable, FromHttpApiData, ToHttpApiData)
 
+instance FromJSON A
+instance ToJSON A
+
 newtype B = B Int
   deriving (Generic, Eq, Show, Typeable)
   deriving newtype (Hashable, FromHttpApiData, ToHttpApiData)
+
+instance FromJSON B
+instance ToJSON B
 
 type Api =
   "item" :> Get '[JSON] A
@@ -62,13 +76,24 @@ main = hspec spec
 spec :: Spec
 spec = describe "example" $ do
   it "good server should not fail" $ do
-    fuzz @Api goodServer config
+    RS.fuzz @Api goodServer config
       >>= (`shouldSatisfy` isNothing)
   it "bad server should fail" $ do
-    fuzz @Api badServer config
+    RS.fuzz @Api badServer config
       >>= (`shouldSatisfy` isJust)
 ```
 
+The previous test just picked apart the server and ran functions manually: sometimes, we want to test via
+an honest-to-goodness network port, like so:
+
+```haskell
+  around (withServer (serve (Proxy :: Proxy Api) badServer)) $ do
+    it "we should also be able to run the _client_ to an independent server (ignore server error messages)" $ \(clientEnv::ClientEnv) -> do
+      RC.fuzz @Api clientEnv config >>= (`shouldSatisfy` isJust)
+```
+
+(we use withApplication rather than testWithApplication because we don't primarily care what the server does here:
+we want to check what a client does when presented with a faulty server.)
 
 We expect to be able to cover the whole api from our starting point, so let's set the coverage to 0.99.
 There are other tweakable things in the config, like maximum runtime, reps,
@@ -103,4 +128,16 @@ build it up from components.
 ```haskell
 deriving via (Compound B) instance BuildFrom B
 deriving via (Atom B) instance Breakdown B
+```
+
+
+test utilities:
+
+``` haskell
+withServer :: Application -> ActionWith ClientEnv -> IO ()
+withServer app action = Warp.withApplication (pure app) (\p -> genClientEnv p >>= action)
+  where genClientEnv port = do
+          baseUrl <- parseBaseUrl "http://localhost"
+          manager <- newManager defaultManagerSettings
+          pure $ mkClientEnv manager (baseUrl { baseUrlPort = port })
 ```
