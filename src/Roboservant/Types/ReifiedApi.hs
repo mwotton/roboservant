@@ -28,7 +28,7 @@ import GHC.Generics ((:*:)(..))
 import Roboservant.Types.Internal
 import Roboservant.Types.Breakdown
 import Roboservant.Types.BuildFrom
-import Data.Kind
+import Data.Kind(Type)
 import Servant
 import Servant.API.Modifiers(FoldRequired,FoldLenient)
 import GHC.TypeLits (Symbol)
@@ -52,6 +52,9 @@ data ReifiedEndpoint = forall as. (V.RecordToList as, V.RMap as) => ReifiedEndpo
     , reEndpointFunc :: V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic,Int))))
     }
 
+instance Show ReifiedEndpoint where
+  show _ = "lol"
+
 class ( V.RecordToList (EndpointArgs endpoint)
       , V.RMap (EndpointArgs endpoint)
       ) => ToReifiedEndpoint (endpoint :: *) where
@@ -64,10 +67,12 @@ class ( V.RecordToList (EndpointArgs endpoint)
 tagType :: Typeable a => f a -> TypedF f a
 tagType = (R.typeRep :*:)
 
-newtype InteractionError = InteractionError T.Text
+data InteractionError = InteractionError
+  { errorMessage :: T.Text
+  , fatalError :: Bool
+  }
   deriving Show
 instance Exception InteractionError
-
 
 
 
@@ -86,6 +91,16 @@ instance
   type EndpointArgs ((x :: Symbol) :> endpoint) = EndpointArgs endpoint
   type EndpointRes ((x :: Symbol) :> endpoint) = EndpointRes endpoint
   reifiedEndpointArguments = reifiedEndpointArguments @endpoint
+
+instance
+  (ToReifiedEndpoint endpoint) =>
+  ToReifiedEndpoint (RemoteHost :> endpoint)
+  where
+  type EndpointArgs (RemoteHost :> endpoint) = EndpointArgs endpoint
+  type EndpointRes (RemoteHost :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments = reifiedEndpointArguments @endpoint
+
+
 
 instance
   (ToReifiedEndpoint endpoint) =>
@@ -128,6 +143,24 @@ instance
   reifiedEndpointArguments =
    tagType (Argument (buildFrom @(IfRequiredLenient T.Text mods paramType)))
       V.:& reifiedEndpointArguments @endpoint
+
+
+instance
+  ( BuildFrom paramType
+  , ToReifiedEndpoint endpoint
+  , Show paramType
+  , Eq paramType
+  ) =>
+  ToReifiedEndpoint (QueryParams name paramType :> endpoint)
+  where
+  type EndpointArgs (QueryParams name paramType :> endpoint) =  [paramType] ': EndpointArgs endpoint
+  type EndpointRes (QueryParams name paramType :> endpoint) = EndpointRes endpoint
+  reifiedEndpointArguments =
+    tagType (Argument (buildFrom @[paramType]))
+      V.:& reifiedEndpointArguments @endpoint
+
+
+
 
 instance
   ( BuildFrom (IfRequiredLenient T.Text mods headerType)

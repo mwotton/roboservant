@@ -11,7 +11,7 @@ import Servant
 import Servant.API.Flatten
 
 type Api =
-  ( "one" :> Post '[JSON] Int
+  ( "one" :> Summary "foo" :> Post '[JSON] Int
       :<|> "two" :> Post '[JSON] Int
   )
     :<|> ( "three" :> Post '[JSON] Int

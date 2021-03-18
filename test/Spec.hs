@@ -22,6 +22,7 @@ import qualified Headers
 import qualified Nested
 import qualified Post
 import qualified Product
+import qualified QueryParams
 import qualified Roboservant as R
 import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
@@ -35,13 +36,12 @@ import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClien
 import Network.Wai(Application)
 import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client       (newManager, defaultManagerSettings)
-import Servant(Endpoints,HasServer)
 
 main :: IO ()
 main = hspec spec
 
 fuzzBoth
-  :: forall a . 
+  :: forall a .
      (R.ToReifiedApi (Endpoints a), HasServer a '[], RS.FlattenServer a, RC.ToReifiedClientApi (Endpoints a), RC.FlattenClient a,
      HasClient ClientM a)
   => String -> Server a -> R.Config -> (Maybe R.Report -> IO ()) -> Spec
@@ -76,22 +76,26 @@ spec = do
     describe "posted body" $ do
       fuzzBoth @Post.Api "passes a coverage check using a posted body" Post.server R.defaultConfig {R.coverageThreshold = 0.99}
         (`shouldSatisfy` isNothing)
-        
+
     describe "seeded" $ do
       let res = Seeded.Seed 1
       shouldFail $ fuzzBoth @Seeded.Api "finds an error using information passed in" Seeded.server
         (R.defaultConfig {R.seed = [(toDyn res, hash res)]})
         (`shouldSatisfy` isNothing)
-        
+
     describe "Foo" $ do
       fuzzBoth @Foo.Api "finds an error in a basic app" Foo.server R.defaultConfig (`shouldSatisfy` serverFailure)
+
+    describe "QueryParams" $ do
+      fuzzBoth @QueryParams.Api "can handle query params" QueryParams.server R.defaultConfig { R.seed = [R.hashedDyn (12::Int)] }
+        (`shouldSatisfy` isNothing)
 
   describe "BuildFrom" $ do
     describe "headers (and sum types)" $ do
       fuzzBoth @Headers.Api "should find a failure that's dependent on using header info" Headers.server R.defaultConfig
         (`shouldSatisfy` serverFailure)
     describe "product types" $ do
-      fuzzBoth @Product.Api "should find a failure that's dependent on creating a product" Product.server 
+      fuzzBoth @Product.Api "should find a failure that's dependent on creating a product" Product.server
         R.defaultConfig {R.seed = [R.hashedDyn 'a', R.hashedDyn (1 :: Int)]}
         (`shouldSatisfy` serverFailure)
   describe "Breakdown" $ do

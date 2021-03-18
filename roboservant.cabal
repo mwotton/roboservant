@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 4c71b6b9460f4719791bb8e67f4a5398b807cd8d17c43dc69da806bb5ba9fb4b
+-- hash: 596d33d4f2e29f15b48525514def52b101c9e89b6193275bd5c0a4c253de8d5c
 
 name:           roboservant
 version:        0.1.0.2
@@ -50,6 +50,7 @@ library
     , dependent-map
     , dependent-sum
     , hashable
+    , http-types
     , lifted-base
     , monad-control
     , mtl
@@ -86,6 +87,7 @@ test-suite example
     , hspec
     , hspec-core
     , http-client
+    , http-types
     , lifted-base
     , monad-control
     , mtl
@@ -113,6 +115,7 @@ test-suite roboservant-test
       Nested
       Post
       Product
+      QueryParams
       Seeded
       UnsafeIO
       Valid
@@ -133,6 +136,7 @@ test-suite roboservant-test
     , hspec-wai
     , http-api-data
     , http-client
+    , http-types
     , lifted-base
     , monad-control
     , mtl
