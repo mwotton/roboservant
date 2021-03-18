@@ -36,7 +36,6 @@ import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClien
 import Network.Wai(Application)
 import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client       (newManager, defaultManagerSettings)
-import Servant(Endpoints,HasServer)
 
 main :: IO ()
 main = hspec spec
