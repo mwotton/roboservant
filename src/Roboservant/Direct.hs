@@ -56,7 +56,7 @@ import GHC.Generics ((:*:) (..))
 import Roboservant.Types
   ( ApiOffset (..),
     Argument (..),
-    InteractionError,
+    InteractionError(..),
     Provenance (..),
     ReifiedApi,
     ReifiedEndpoint (..),
@@ -242,7 +242,10 @@ fuzz' reifiedApi Config {..} = handle (pure . Just . formatException) $ do
     execute fuzzop func args = do
       (liftIO . logInfo . show . (fuzzop,) . stash) =<< get
       liftIO (V.runcurry' func argVals) >>= \case
-        Left (e::InteractionError) -> throw e
+        Left (e::InteractionError) ->
+          if fatalError e
+          then throw e
+          else pure ()
         Right (dyn :: NEL.NonEmpty (Dynamic, Int)) -> do
           modify'
             ( \fs@FuzzState {..} ->

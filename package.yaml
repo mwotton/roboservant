@@ -19,6 +19,7 @@ dependencies:
 - containers
 - random
 - hashable
+- http-types
 - lifted-base
 - monad-control
 - mtl

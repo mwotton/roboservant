@@ -66,7 +66,8 @@ instance (Typeable x, Hashable x, Breakdown x) => NormalizeFunction (Handler x) 
       where
         -- | TODO improve this
         renderServerError :: ServerError -> InteractionError
-        renderServerError = InteractionError . T.pack . show
+        renderServerError s = InteractionError (T.pack $ show s) (errHTTPCode serverError == 500)
+
     Right x -> pure $ Right $ breakdown x
 
 
@@ -91,7 +92,7 @@ instance
   FlattenServer (endpoint :<|> api)
   where
   flattenServer (endpoint :<|> server) = endpoint `AnEndpoint` flattenServer @api server
- 
+
 instance
  (
    Endpoints api ~ '[api]

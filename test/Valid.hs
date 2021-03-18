@@ -21,7 +21,7 @@ data Routes route
   = Routes
       { getInt ::
           route
-            :- Get '[JSON] Int,
+            :- Summary "i'm a summary!" :> Get '[JSON] Int,
         captureIt ::
           route
             :- Capture "void" Void :> Get '[JSON] ()

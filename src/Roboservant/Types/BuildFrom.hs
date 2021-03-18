@@ -12,6 +12,7 @@
 
 module Roboservant.Types.BuildFrom where
 
+import Data.List(nub)
 import qualified Data.Dependent.Map as DM
 import Data.Hashable
 import qualified Data.IntSet as IntSet
@@ -59,11 +60,12 @@ deriving via (Compound (Maybe x)) instance (Typeable x, Hashable x, BuildFrom x)
 
 -- this isn't wonderful, but we need a hand-rolled instance for recursive datatypes right now.
 -- with an arbitrary-ish interface, we could use a size parameter, rng access etc.
-instance (BuildFrom x) => BuildFrom [x] where
-  extras stash = map (\xs -> (concatMap fst xs, map snd xs)) $ notpowerset $ extras @x stash
+instance (Eq x, BuildFrom x) => BuildFrom [x] where
+  extras stash =
+    nub $ map (\xs -> (concatMap fst xs, map snd xs)) $ notpowerset $ buildFrom' @x stash
     where
       -- powerset creates way too much stuff. something better here eventually.
-      notpowerset xs = xs:map pure xs
+      notpowerset xs = []:xs:map pure xs
 
 
 instance (Hashable x, Typeable x, Generic x, GBuildFrom (Rep x)) => BuildFrom (Compound (x :: Type)) where
