@@ -17,8 +17,6 @@ jobs:
       fail-fast: false
       matrix:
         versions:
-          - ghc: '8.6.5'
-            cabal: '3.4'
           - ghc: '8.8.4'
             cabal: '3.4'
           - ghc: '8.10.4'
