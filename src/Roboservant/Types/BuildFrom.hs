@@ -23,6 +23,8 @@ import Data.Typeable (Typeable)
 import GHC.Generics
 import Roboservant.Types.Internal
 import qualified Type.Reflection as R
+import Servant(NoContent)
+import Roboservant.Types.Orphans()
 
 buildFrom :: forall x. (Hashable x, BuildFrom x, Typeable x) => Stash -> Maybe (StashValue x)
 buildFrom = buildStash . buildFrom'
@@ -101,3 +103,5 @@ instance BuildFrom a => GBuildFrom (K1 i a) where
 
 instance GBuildFrom U1 where
   gExtras _ = [([], U1)]
+
+deriving via (Atom NoContent) instance BuildFrom NoContent

@@ -21,6 +21,7 @@ import qualified Foo
 import qualified Headers
 import qualified Nested
 import qualified Post
+import qualified Put
 import qualified Product
 import qualified QueryParams
 import qualified Roboservant as R
@@ -77,6 +78,12 @@ spec = do
       fuzzBoth @Post.Api "passes a coverage check using a posted body" Post.server R.defaultConfig {R.coverageThreshold = 0.99}
         (`shouldSatisfy` isNothing)
 
+
+    describe "PUTted body" $ do
+      fuzzBoth @Put.Api "passes a coverage check using a posted body" Put.server R.defaultConfig {R.coverageThreshold = 0.99}
+        (`shouldSatisfy` isNothing)
+
+
     describe "seeded" $ do
       let res = Seeded.Seed 1
       shouldFail $ fuzzBoth @Seeded.Api "finds an error using information passed in" Seeded.server
@@ -131,8 +138,12 @@ deriving via (R.Atom Seeded.Seed) instance R.BuildFrom Seeded.Seed
 deriving via (R.Atom Void) instance R.BuildFrom Void
 
 deriving via (R.Atom Post.FooPost) instance R.Breakdown Post.FooPost
-
 deriving via (R.Atom Post.FooPost) instance R.BuildFrom Post.FooPost
+
+deriving via (R.Atom Put.Foo) instance R.Breakdown Put.Foo
+deriving via (R.Atom Put.Foo) instance R.BuildFrom Put.Foo
+
+
 
 deriving via (R.Compound Breakdown.Foo) instance R.Breakdown Breakdown.Foo
 

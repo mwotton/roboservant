@@ -22,6 +22,8 @@ import qualified Data.List.NonEmpty as NEL
 import Data.Typeable (Typeable)
 import GHC.Generics
 import Roboservant.Types.Internal
+import Servant
+import Roboservant.Types.Orphans()
 
 breakdown ::
   (Hashable x, Typeable x, Breakdown x) =>
@@ -74,3 +76,5 @@ instance (Hashable a, Typeable a, Breakdown a) => GBreakdown (K1 R a) where
 
 instance GBreakdown U1 where
   gBreakdownExtras U1 = []
+
+deriving via (Atom NoContent) instance Breakdown NoContent

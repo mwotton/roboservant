@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 596d33d4f2e29f15b48525514def52b101c9e89b6193275bd5c0a4c253de8d5c
+-- hash: 76f10a967a70cffa900bcc3464a1fd973642332b3a86d22a19f5e3d1d8879f4d
 
 name:           roboservant
 version:        0.1.0.2
@@ -36,6 +36,7 @@ library
       Roboservant.Types.BuildFrom
       Roboservant.Types.Config
       Roboservant.Types.Internal
+      Roboservant.Types.Orphans
       Roboservant.Types.ReifiedApi
       Roboservant.Types.ReifiedApi.Server
   other-modules:
@@ -115,6 +116,7 @@ test-suite roboservant-test
       Nested
       Post
       Product
+      Put
       QueryParams
       Seeded
       UnsafeIO

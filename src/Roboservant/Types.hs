@@ -14,6 +14,7 @@ module Roboservant.Types
     module Roboservant.Types.ReifiedApi.Server,
     module Roboservant.Types.Internal,
     module Roboservant.Types.Config,
+    module Roboservant.Types.Orphans,
   )
 where
 
@@ -23,3 +24,4 @@ import Roboservant.Types.Config
 import Roboservant.Types.Internal
 import Roboservant.Types.ReifiedApi
 import Roboservant.Types.ReifiedApi.Server
+import Roboservant.Types.Orphans()
