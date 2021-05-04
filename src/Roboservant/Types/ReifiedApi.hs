@@ -84,6 +84,12 @@ instance
   type EndpointRes (Verb method statusCode contentTypes responseType) = responseType
   reifiedEndpointArguments = V.RNil
 
+instance ToReifiedEndpoint (NoContentVerb method)
+  where
+  type EndpointArgs (NoContentVerb method) = '[]
+  type EndpointRes (NoContentVerb method) = NoContent
+  reifiedEndpointArguments = V.RNil
+
 instance
   (ToReifiedEndpoint endpoint) =>
   ToReifiedEndpoint ((x :: Symbol) :> endpoint)
