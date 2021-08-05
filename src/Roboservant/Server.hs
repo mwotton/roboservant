@@ -5,7 +5,7 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE PolyKinds #-}
-{-# LANGUAGE RankNTypes #-}
+
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -27,7 +27,7 @@ fuzz :: forall api.
               Server api ->
               Config ->
               IO (Maybe Report)
-fuzz s  = fuzz' (reifyServer s) 
+fuzz s  = fuzz' (reifyServer s)
   -- todo: how do we pull reifyServer out?
   where reifyServer :: (FlattenServer api, ToReifiedApi (Endpoints api))
                     => Server api -> ReifiedApi

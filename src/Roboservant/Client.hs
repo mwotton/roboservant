@@ -8,7 +8,7 @@
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
-{-# LANGUAGE TypeOperators #-}
+
 {-# LANGUAGE UndecidableInstances #-}
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE FlexibleContexts #-}
@@ -97,7 +97,7 @@ instance (Typeable x, Hashable x, Breakdown x) => NormalizeFunction (ClientM x) 
     where
       renderClientError :: ClientError -> InteractionError
       renderClientError err = case err of
-        FailureResponse _ (Response{responseStatusCode}) -> InteractionError textual (responseStatusCode == status500)
+        FailureResponse _ Response{responseStatusCode} -> InteractionError textual (responseStatusCode == status500)
         _ -> InteractionError textual True
 
         where textual = T.pack $ show err

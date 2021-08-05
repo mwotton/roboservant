@@ -1,7 +1,7 @@
 {-# LANGUAGE DataKinds #-}
-{-# LANGUAGE DeriveGeneric #-}
+
 {-# LANGUAGE DerivingStrategies #-}
-{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE TypeOperators #-}
 
@@ -22,7 +22,7 @@ healthcheck ref = do
   t <- liftIO $ readIORef ref
   case t of
     0 -> pure ()
-    n -> throwError $ err500 {errBody = "observed inconsistency: " <> (BL8.pack $ show n)}
+    n -> throwError $ err500 {errBody = "observed inconsistency: " <> BL8.pack (show n)}
 
 makeServer :: IO (Server UnsafeApi)
 makeServer = do

@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.33.0.
+-- This file has been generated from package.yaml by hpack version 0.34.4.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 76f10a967a70cffa900bcc3464a1fd973642332b3a86d22a19f5e3d1d8879f4d
+-- hash: df9bc2d503c0e20b2f3edd45f6b63a5fa751b4b0254cfbb1b5e3209e5cf8de2c
 
 name:           roboservant
 version:        0.1.0.2
@@ -73,7 +73,7 @@ test-suite example
   other-modules:
       Paths_roboservant
   hs-source-dirs:
-      ./.
+      ./
   ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -pgmL markdown-unlit
   build-tool-depends:
       markdown-unlit:markdown-unlit

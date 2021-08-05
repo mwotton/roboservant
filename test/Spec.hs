@@ -37,6 +37,7 @@ import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClien
 import Network.Wai(Application)
 import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client       (newManager, defaultManagerSettings)
+import Control.Monad((>=>))
 
 main :: IO ()
 main = hspec spec
@@ -47,15 +48,15 @@ fuzzBoth
      HasClient ClientM a)
   => String -> Server a -> R.Config -> (Maybe R.Report -> IO ()) -> Spec
 fuzzBoth name server config condition = do
-  it (name <> " via server") $ do
+  it (name <> " via server") $
     RS.fuzz @a server config >>= condition
 
-  around (withServer (serve (Proxy :: Proxy a) server)) $ do
+  around (withServer (serve (Proxy :: Proxy a) server)) $
     it (name <> " via client") $ \(clientEnv::ClientEnv) -> do
-      RC.fuzz @a clientEnv config >>= condition
+    RC.fuzz @a clientEnv config >>= condition
 
 withServer :: Application -> ActionWith ClientEnv -> IO ()
-withServer app action = Warp.testWithApplication (pure app) (\p -> genClientEnv p >>= action)
+withServer app action = Warp.testWithApplication (pure app) (genClientEnv >=> action)
   where genClientEnv port = do
           baseUrl <- parseBaseUrl "http://localhost"
           manager <- newManager defaultManagerSettings
@@ -74,14 +75,14 @@ spec = do
                                Just (R.InsufficientCoverage _) -> True
                                _ -> False
                            ))
-    describe "posted body" $ do
+    describe "posted body" $
       fuzzBoth @Post.Api "passes a coverage check using a posted body" Post.server R.defaultConfig {R.coverageThreshold = 0.99}
-        (`shouldSatisfy` isNothing)
+      (`shouldSatisfy` isNothing)
 
 
-    describe "PUTted body" $ do
+    describe "PUTted body" $
       fuzzBoth @Put.Api "passes a coverage check using a posted body" Put.server R.defaultConfig {R.coverageThreshold = 0.99}
-        (`shouldSatisfy` isNothing)
+      (`shouldSatisfy` isNothing)
 
 
     describe "seeded" $ do
@@ -90,31 +91,29 @@ spec = do
         (R.defaultConfig {R.seed = [(toDyn res, hash res)]})
         (`shouldSatisfy` isNothing)
 
-    describe "Foo" $ do
+    describe "Foo" $
       fuzzBoth @Foo.Api "finds an error in a basic app" Foo.server R.defaultConfig (`shouldSatisfy` serverFailure)
 
-    describe "QueryParams" $ do
+    describe "QueryParams" $
       fuzzBoth @QueryParams.Api "can handle query params" QueryParams.server R.defaultConfig { R.seed = [R.hashedDyn (12::Int)] }
-        (`shouldSatisfy` isNothing)
+      (`shouldSatisfy` isNothing)
 
   describe "BuildFrom" $ do
-    describe "headers (and sum types)" $ do
+    describe "headers (and sum types)" $
       fuzzBoth @Headers.Api "should find a failure that's dependent on using header info" Headers.server R.defaultConfig
-        (`shouldSatisfy` serverFailure)
-    describe "product types" $ do
+      (`shouldSatisfy` serverFailure)
+    describe "product types" $
       fuzzBoth @Product.Api "should find a failure that's dependent on creating a product" Product.server
-        R.defaultConfig {R.seed = [R.hashedDyn 'a', R.hashedDyn (1 :: Int)]}
-        (`shouldSatisfy` serverFailure)
+      R.defaultConfig {R.seed = [R.hashedDyn 'a', R.hashedDyn (1 :: Int)]}
+      (`shouldSatisfy` serverFailure)
   describe "Breakdown" $ do
     fuzzBoth @Breakdown.ProductApi "handles products"  Breakdown.productServer R.defaultConfig
       (`shouldSatisfy` serverFailure)
     fuzzBoth @Breakdown.SumApi "handles sums" Breakdown.sumServer R.defaultConfig
       (`shouldSatisfy` serverFailure)
-  describe "flattening" $ do
-    -- we don't actually do much here, this is just here to document the appropriate response
-    -- if you get a type error with a nested api.
+  describe "flattening" $
     fuzzBoth @Nested.FlatApi "can handle nested apis" Nested.server R.defaultConfig {R.coverageThreshold = 0.99}
-      (`shouldSatisfy` isNothing)
+    (`shouldSatisfy` isNothing)
 
 serverFailure :: Maybe R.Report -> Bool
 serverFailure = \case
@@ -159,7 +158,7 @@ shouldFail =
     ( \i ->
         i
           { itemExample = \p a cb -> do
-              r <- (itemExample i) p a cb
+              r <- itemExample i p a cb
               pure
                 r
                   { resultStatus = case resultStatus r of

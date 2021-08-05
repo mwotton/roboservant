@@ -7,7 +7,7 @@
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TupleSections #-}
-{-# LANGUAGE TypeApplications #-}
+
 {-# LANGUAGE TypeFamilies #-}
 {-# LANGUAGE UndecidableInstances #-}
 
@@ -150,12 +150,12 @@ fuzz' reifiedApi Config {..} = handle (pure . Just . formatException) $ do
       Report
         (unlines [show failureType, show exception])
         r
-    displayDiagnostics FuzzState {..} = liftIO $ do
+    displayDiagnostics FuzzState {..} = liftIO $
       logInfo $ unlines $
-        ["api endpoints covered"]
-          <> (map show . Set.toList . Set.fromList $ map apiOffset path)
-          <> ["", "types in stash"]
-          <> DM.foldrWithKey (\_ v r -> (show . NEL.length . getStashValue $ v) : r) [] (getStash stash)
+      ["api endpoints covered"]
+        <> (map show . Set.toList . Set.fromList $ map apiOffset path)
+        <> ["", "types in stash"]
+        <> DM.foldrWithKey (\_ v r -> (show . NEL.length . getStashValue $ v) : r) [] (getStash stash)
     --        <> (map (show . NEL.length . getStashValue ) $ DM.assocs (getStash stash))
     --        $ \_k v ->
     --               (show . NEL.length $ getStashValue v))
@@ -246,11 +246,11 @@ fuzz' reifiedApi Config {..} = handle (pure . Just . formatException) $ do
           if fatalError e
           then throw e
           else pure ()
-        Right (dyn :: NEL.NonEmpty (Dynamic, Int)) -> do
+        Right (dyn :: NEL.NonEmpty (Dynamic, Int)) ->
           modify'
-            ( \fs@FuzzState {..} ->
-                fs {stash = addToStash (NEL.toList dyn) stash}
-            )
+          ( \fs@FuzzState {..} ->
+              fs {stash = addToStash (NEL.toList dyn) stash}
+          )
       where
         argVals = V.rmap (\(_ :*: V.Identity x) -> V.Identity x) args
     -- argTypes = recordToList' (\(tr :*: _) -> R.SomeTypeRep tr) args
@@ -262,8 +262,7 @@ fuzz' reifiedApi Config {..} = handle (pure . Just . formatException) $ do
         (execute op func args)
         [ Handler (\(e :: SomeAsyncException) -> throw e),
           Handler
-            ( \(e :: SomeException) -> do
-                -- displayDiagnostics =<< get
+            ( \(e :: SomeException) -> 
                 throw . RoboservantException ServerCrashed (Just e) =<< get
             )
         ]
