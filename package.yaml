@@ -1,6 +1,6 @@
 
 name:                roboservant
-version:             0.1.0.2
+version:             0.1.0.3
 github:              "mwotton/roboservant"
 license:             BSD3
 copyright:           "2020 Mark Wotton, Samuel Schlesinger"
