@@ -43,11 +43,11 @@ instance Show Stash where
 
 -- | Can't be built up from parts, can't be broken down further.
 newtype Atom x = Atom {unAtom :: x}
-  deriving newtype (Hashable, Typeable)
+  deriving newtype (Hashable, Typeable,Eq)
 
 -- | can be broken down and built up from generic pieces
 newtype Compound x = Compound {unCompound :: x}
-  deriving newtype (Hashable, Typeable)
+  deriving newtype (Hashable, Typeable, Eq)
 
 hashedDyn :: (Hashable a, Typeable a) => a -> (Dynamic, Int)
 hashedDyn a = (toDyn a, hash a)

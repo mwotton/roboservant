@@ -1,5 +1,6 @@
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE GADTs #-}
@@ -48,7 +49,7 @@ instance (Hashable x, Typeable x, Breakdown x) => Breakdown [x] where
   breakdownExtras stash =  concatMap (NEL.toList . breakdown) stash
 
 
-class GBreakdown (f :: k -> *) where
+class GBreakdown (f :: k -> Type) where
   gBreakdownExtras :: f a -> [(Dynamic, Int)]
 
 instance (Hashable x, Typeable x, Generic x, GBreakdown (Rep x)) => Breakdown (Compound (x :: Type)) where

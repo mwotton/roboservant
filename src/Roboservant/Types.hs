@@ -14,7 +14,6 @@ module Roboservant.Types
     module Roboservant.Types.ReifiedApi.Server,
     module Roboservant.Types.Internal,
     module Roboservant.Types.Config,
-    module Roboservant.Types.Orphans,
   )
 where
 

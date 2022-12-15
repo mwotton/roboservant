@@ -77,7 +77,7 @@ deriving via (Atom Int) instance BuildFrom Int
 
 deriving via (Atom Char) instance BuildFrom Char
 
-class GBuildFrom (f :: k -> *) where
+class GBuildFrom (f :: k -> Type) where
   gExtras :: Stash -> [([Provenance], f a)]
 
 instance GBuildFrom b => GBuildFrom (M1 D a b) where

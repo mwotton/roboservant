@@ -10,7 +10,6 @@ module Valid where
 import Data.Void
 import GHC.Generics
 import Servant
-import Servant.API.Generic
 import Servant.Server.Generic
 
 type Api =

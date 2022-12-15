@@ -57,7 +57,7 @@ instance Show ReifiedEndpoint where
 
 class ( V.RecordToList (EndpointArgs endpoint)
       , V.RMap (EndpointArgs endpoint)
-      ) => ToReifiedEndpoint (endpoint :: *) where
+      ) => ToReifiedEndpoint (endpoint :: Type) where
   type EndpointArgs endpoint :: [Type]
   type EndpointRes endpoint :: Type
 
