@@ -13,9 +13,10 @@ extra-source-files:
 - ChangeLog.md
 
 dependencies:
-- base >= 4.7 && < 5
+- base >= 4.7 && < 6
 
 - bytestring
+- constraints
 - containers
 - random
 - hashable
@@ -60,6 +61,7 @@ tests:
     - hspec-wai
     - wai
     - warp
+    - transformers
   example:
     main: Example.lhs
     source-dirs: .
