@@ -132,12 +132,6 @@ spec = do
   describe "NamedRoute" $
     fuzzClient @NamedRoute.API "can handle named routes" NamedRoute.server R.defaultConfig {R.coverageThreshold = 0.99}
     (`shouldSatisfy` isNothing)
-  it "NormalizeFunction" $ do
-    let mockClient :: ClientM Int
-        mockClient = client (Proxy :: Proxy (Get '[JSON] Int))
-    let normalizedClient = R.normalize mockClient
-    result <- runReaderT normalizedClient _
-    fmap (fmap snd) result `shouldBe` _
 
 serverFailure :: Maybe R.Report -> Bool
 serverFailure = \case
