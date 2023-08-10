@@ -24,6 +24,7 @@ import qualified Post
 import qualified Put
 import qualified Product
 import qualified QueryParams
+import qualified NamedRoute
 import qualified Roboservant as R
 import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
@@ -31,16 +32,18 @@ import qualified Seeded
 import Test.Hspec
 import Test.Hspec.Core.Spec (FailureReason (Reason), ResultStatus (Failure, Success), itemExample, mapSpecItem_, resultStatus)
 import qualified Valid
-import Servant ( Server, Proxy(..), serve, Endpoints, HasServer )
+import Servant ( Server, Get, JSON, Proxy(..), serve, Endpoints, HasServer )
 
-import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClient,ClientM)
+import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClient,ClientM,client)
 import Network.Wai(Application)
 import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client       (newManager, defaultManagerSettings)
 import Control.Monad((>=>))
+import Control.Monad.Trans.Reader (runReaderT)
 
 main :: IO ()
 main = hspec spec
+
 
 fuzzBoth
   :: forall a .
@@ -54,6 +57,18 @@ fuzzBoth name server config condition = do
   around (withServer (serve (Proxy :: Proxy a) server)) $
     it (name <> " via client") $ \(clientEnv::ClientEnv) -> do
     RC.fuzz @a clientEnv config >>= condition
+
+
+fuzzClient
+  :: forall a .
+     (R.ToReifiedApi (Endpoints a), HasServer a '[],  RC.ToReifiedClientApi (Endpoints a), RC.FlattenClient a,
+     HasClient ClientM a)
+  => String -> Server a -> R.Config -> (Maybe R.Report -> IO ()) -> Spec
+fuzzClient name server config condition = do
+  around (withServer (serve (Proxy :: Proxy a) server)) $
+    it (name <> " via client") $ \(clientEnv::ClientEnv) -> do
+    RC.fuzz @a clientEnv config >>= condition
+
 
 withServer :: Application -> ActionWith ClientEnv -> IO ()
 withServer app action = Warp.testWithApplication (pure app) (genClientEnv >=> action)
@@ -112,8 +127,17 @@ spec = do
     fuzzBoth @Breakdown.SumApi "handles sums" Breakdown.sumServer R.defaultConfig
       (`shouldSatisfy` serverFailure)
   describe "flattening" $
-    fuzzBoth @Nested.FlatApi "can handle nested apis" Nested.server R.defaultConfig {R.coverageThreshold = 0.99}
+    fuzzBoth @Nested.FlatApi "can handle nested apis" Nested.server R.defaultConfig {R.coverageThreshold = 0.9999999}
     (`shouldSatisfy` isNothing)
+  describe "NamedRoute" $
+    fuzzClient @NamedRoute.API "can handle named routes" NamedRoute.server R.defaultConfig {R.coverageThreshold = 0.99}
+    (`shouldSatisfy` isNothing)
+  it "NormalizeFunction" $ do
+    let mockClient :: ClientM Int
+        mockClient = client (Proxy :: Proxy (Get '[JSON] Int))
+    let normalizedClient = R.normalize mockClient
+    result <- runReaderT normalizedClient _
+    fmap (fmap snd) result `shouldBe` _
 
 serverFailure :: Maybe R.Report -> Bool
 serverFailure = \case
