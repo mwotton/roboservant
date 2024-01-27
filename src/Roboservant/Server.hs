@@ -19,18 +19,18 @@ import Roboservant.Types
     ReifiedApi,
   )
 import Roboservant.Types.ReifiedApi.Server(ToReifiedApi (..))
-import Servant (Endpoints, Proxy (Proxy), Server)
+import Servant (Endpoints, Proxy (Proxy))
 import Roboservant.Types.Config
 
 fuzz :: forall api.
               (FlattenServer api, ToReifiedApi (Endpoints api)) =>
-              Server api ->
+              Proxy api ->
               Config ->
               IO (Maybe Report)
 fuzz s  = fuzz' (reifyServer s)
   -- todo: how do we pull reifyServer out?
   where reifyServer :: (FlattenServer api, ToReifiedApi (Endpoints api))
-                    => Server api -> ReifiedApi
+                    => Proxy api -> ReifiedApi
         reifyServer server = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
 --        reifyServer server = toReifiedApi server (Proxy @(Endpoints api))
 
