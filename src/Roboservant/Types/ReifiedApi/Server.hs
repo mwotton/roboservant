@@ -35,19 +35,19 @@ import Data.Hashable(Hashable)
 type ReifiedApi = [(ApiOffset, ReifiedEndpoint )]
 
 
-class ToReifiedApi endpoints where
-  toReifiedApi :: Bundled endpoints -> Proxy endpoints -> ReifiedApi
+class ToReifiedApi endpoints  m where
+  toReifiedApi :: Bundled endpoints m -> Proxy endpoints -> ReifiedApi
 
-instance ToReifiedApi '[] where
+instance ToReifiedApi '[] m where
   toReifiedApi NoEndpoints _ = []
 
 instance
-  ( NormalizeFunction (ServerT endpoint Handler)
-  , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either InteractionError (NonEmpty (Dynamic,Int))))
+  ( NormalizeFunction (ServerT endpoint m)
+  , Normal (ServerT endpoint m) ~ V.Curried (EndpointArgs endpoint) (IO (Either InteractionError (NonEmpty (Dynamic,Int))))
   , ToReifiedEndpoint endpoint
-  , ToReifiedApi endpoints
+  , ToReifiedApi endpoints m
   ) =>
-  ToReifiedApi (endpoint : endpoints)
+  ToReifiedApi (endpoint : endpoints) m
   where
   toReifiedApi (endpoint `AnEndpoint` endpoints) _ =
     (0, ReifiedEndpoint
@@ -77,19 +77,19 @@ instance (Typeable x, Hashable x, Breakdown x) => NormalizeFunction (Handler x) 
 --              liftIO . logInfo . show $ ("ignoring non-500 error", serverError)
 
 
-data Bundled endpoints where
+data Bundled endpoints m where
   -- AnEndpoint :: Server endpoint -> Bundled endpoints -> Bundled (endpoint ': endpoints)
-  AnEndpoint :: Server endpoint -> Bundled endpoints -> Bundled (endpoint ': endpoints)
-  NoEndpoints :: Bundled '[]
+  AnEndpoint :: ServerT endpoint m -> Bundled endpoints m -> Bundled (endpoint ': endpoints) m
+  NoEndpoints :: Bundled '[] m
 
-class FlattenServer api where
-  flattenServer :: Server api -> Bundled (Endpoints api)
+class FlattenServer api m where
+  flattenServer :: ServerT api m -> Bundled (Endpoints api) m
 
 instance
-  ( FlattenServer api,
+  ( FlattenServer api m,
     Endpoints endpoint ~ '[endpoint]
   ) =>
-  FlattenServer (endpoint :<|> api)
+  FlattenServer (endpoint :<|> api) m
   where
   flattenServer (endpoint :<|> server) = endpoint `AnEndpoint` flattenServer @api server
 
@@ -97,11 +97,11 @@ instance
  (
    Endpoints api ~ '[api]
  ) =>
-  FlattenServer (x :> api)
+  FlattenServer (x :> api) m
   where
   flattenServer server = server `AnEndpoint` NoEndpoints
 
-instance FlattenServer (Verb method statusCode contentTypes responseType)
+instance FlattenServer (Verb method statusCode contentTypes responseType) m
   where
   flattenServer server = server `AnEndpoint` NoEndpoints
 
