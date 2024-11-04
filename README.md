@@ -5,6 +5,11 @@ Automatically fuzz your servant apis in a contextually-aware way.
 [![Stack CI](https://github.com/mwotton/roboservant/actions/workflows/ci.yml/badge.svg)](https://github.com/mwotton/roboservant/actions/workflows/ci.yml)
 [![Cabal CI](https://github.com/mwotton/roboservant/actions/workflows/cabal.yml/badge.svg)](https://github.com/mwotton/roboservant/actions/workflows/cabal.yml)
 
+##
+
+This is pretty much obsoleted by [schemathesis](https://schemathesis.readthedocs.io/en/stable/), at least once you 
+have stateful testing going.
+
 ## example
 
 see full example [here](EXAMPLE.md)
