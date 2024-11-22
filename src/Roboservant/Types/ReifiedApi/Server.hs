@@ -7,6 +7,7 @@
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE PolyKinds #-}
 
+
 {-# LANGUAGE ScopedTypeVariables #-}
 {-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE TypeFamilies #-}
@@ -42,8 +43,8 @@ instance ToReifiedApi '[] where
   toReifiedApi NoEndpoints _ = []
 
 instance
-  ( NormalizeFunction (ServerT endpoint Handler)
-  , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either InteractionError (NonEmpty (Dynamic,Int))))
+  ( NormalizeFunction (Proxy endpoint)
+  , Normal (Proxy endpoint)  ~ V.Curried (EndpointArgs endpoint) (IO (Either InteractionError (NonEmpty (Dynamic,Int))))
   , ToReifiedEndpoint endpoint
   , ToReifiedApi endpoints
   ) =>
@@ -79,11 +80,11 @@ instance (Typeable x, Hashable x, Breakdown x) => NormalizeFunction (Handler x) 
 
 data Bundled endpoints where
   -- AnEndpoint :: Server endpoint -> Bundled endpoints -> Bundled (endpoint ': endpoints)
-  AnEndpoint :: Server endpoint -> Bundled endpoints -> Bundled (endpoint ': endpoints)
+  AnEndpoint :: Proxy endpoint -> Bundled endpoints -> Bundled (endpoint ': endpoints) 
   NoEndpoints :: Bundled '[]
 
 class FlattenServer api where
-  flattenServer :: Server api -> Bundled (Endpoints api)
+  flattenServer :: Proxy api-> Bundled (Endpoints api)
 
 instance
   ( FlattenServer api,
@@ -91,7 +92,7 @@ instance
   ) =>
   FlattenServer (endpoint :<|> api)
   where
-  flattenServer (endpoint :<|> server) = endpoint `AnEndpoint` flattenServer @api server
+  flattenServer _ = Proxy @endpoint `AnEndpoint` flattenServer (Proxy @api)
 
 instance
  (
