@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 0c0c35e1dca1d6c52e5bc61591cbd8c0da9d811b83341bbc676c5f8b93b0b20d
+-- hash: 01f24e4e312d2eb8b6e8c33ff44dbe8e0c3d7cede96bc05f094d5a3874444a26
 
 name:           roboservant
 version:        0.1.0.3
@@ -118,6 +118,7 @@ test-suite roboservant-test
       Product
       Put
       QueryParams
+      Records
       Seeded
       UnsafeIO
       Valid

@@ -2,6 +2,7 @@
 {-# LANGUAGE TypeOperators #-}
 {-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE DataKinds #-}
+{-# LANGUAGE FlexibleInstances #-}
 {-# LANGUAGE AllowAmbiguousTypes #-}
 {-# LANGUAGE DataKinds #-}
 {-# LANGUAGE GADTs #-}
@@ -63,6 +64,24 @@ class FlattenClient api where
   flattenClient :: Client ClientM api  -> ClientBundled (Endpoints api)
 
 instance
+  ( GenericServant routes (AsClientT ClientM)
+  , FlattenClient (ToServantApi routes)
+  , Client ClientM (ToServantApi routes) ~ ToServant routes (AsClientT ClientM)
+  , ToReifiedClientApi (Endpoints (ToServantApi routes))
+  , ToReifiedClientApi endpoints
+  ) =>
+  ToReifiedClientApi (NamedRoutes routes ': endpoints) where
+  toReifiedClientApi (endpoint `AClientEndpoint` endpoints) _ clientEnv =
+    let nested = toReifiedClientApi
+                  (flattenClient @(ToServantApi routes) (toServant endpoint))
+                  (Proxy @(Endpoints (ToServantApi routes)))
+                  clientEnv
+        offset = fromIntegral (length nested)
+     in nested ++ shiftClient offset (toReifiedClientApi endpoints (Proxy @endpoints) clientEnv)
+
+
+instance
+  {-# OVERLAPPABLE #-}
   ( NormalizeFunction (Client ClientM endpoint)
   , Normal (Client ClientM endpoint) ~ V.Curried (EndpointArgs endpoint) (ReaderT ClientEnv IO (Either InteractionError (NonEmpty (Dynamic,Int))))
   , ToReifiedClientApi endpoints
@@ -82,6 +101,9 @@ instance
       foo :: V.Curried (EndpointArgs endpoint) (ReaderT ClientEnv IO ResultType)
           -> V.Curried (EndpointArgs endpoint) (IO ResultType)
       foo = mapCurried @(EndpointArgs endpoint) @(ReaderT ClientEnv IO ResultType) (`runReaderT` clientEnv)
+
+shiftClient :: ApiOffset -> ReifiedApi -> ReifiedApi
+shiftClient offset = map (first (+ offset))
 
 mapCurried :: forall ts a b. V.RecordCurry' ts => (a -> b) -> V.Curried ts a -> V.Curried ts b
 mapCurried f g = V.rcurry' @ts $ f . V.runcurry' g
@@ -124,4 +146,7 @@ instance
 
 instance FlattenClient (Verb method statusCode contentTypes responseType)
   where
+  flattenClient c = c `AClientEndpoint` NoClientEndpoints
+
+instance FlattenClient (NamedRoutes routes) where
   flattenClient c = c `AClientEndpoint` NoClientEndpoints
