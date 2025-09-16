@@ -9,6 +9,10 @@ Automatically fuzz your servant apis in a contextually-aware way.
 
 see full example [here](EXAMPLE.md)
 
+Record-style servant APIs built with `Servant.API.Generic` and
+`NamedRoutes` are supported as well; the example file now includes a
+walkthrough of fuzzing a record server.
+
 ## why?
 
 Servant gives us a lot of information about what a server can do. We
