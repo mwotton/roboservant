@@ -24,6 +24,7 @@ import qualified Post
 import qualified Put
 import qualified Product
 import qualified QueryParams
+import qualified Records
 import qualified Roboservant as R
 import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
@@ -68,6 +69,9 @@ spec = do
     describe "noError" $ do
       fuzzBoth @Valid.Api "find no error in a basic app" Valid.server R.defaultConfig (`shouldSatisfy` isNothing)
       fuzzBoth @Valid.RoutedApi "finds no error in a valid generic app"   Valid.routedServer R.defaultConfig (`shouldSatisfy` isNothing)
+      fuzzBoth @Records.Api "finds no error in a record-based generic app" Records.server R.defaultConfig (`shouldSatisfy` isNothing)
+      let complexSeeds = [R.hashedDyn (1 :: Int), R.hashedDyn (2 :: Int), R.hashedDyn (3 :: Int)]
+      fuzzBoth @Records.ComplexApi "finds no error in a complex record-based generic app" Records.complexServer R.defaultConfig { R.seed = complexSeeds } (`shouldSatisfy` isNothing)
       fuzzBoth @Valid.Api "fails coverage check" Valid.server R.defaultConfig {R.coverageThreshold = 0.6}
         (\r ->
            fmap (R.failureReason . R.rsException) r
@@ -93,6 +97,12 @@ spec = do
 
     describe "Foo" $
       fuzzBoth @Foo.Api "finds an error in a basic app" Foo.server R.defaultConfig (`shouldSatisfy` serverFailure)
+
+    describe "Records" $
+      do
+        fuzzBoth @Records.Api "finds an error in a record-based generic app that throws" Records.badServer R.defaultConfig (`shouldSatisfy` serverFailure)
+        let complexSeeds = [R.hashedDyn (10 :: Int), R.hashedDyn (20 :: Int), R.hashedDyn (30 :: Int)]
+        fuzzBoth @Records.ComplexApi "finds an error in a complex record-based generic app that throws" Records.complexBadServer R.defaultConfig { R.seed = complexSeeds } (`shouldSatisfy` serverFailure)
 
     describe "QueryParams" $
       fuzzBoth @QueryParams.Api "can handle query params" QueryParams.server R.defaultConfig { R.seed = [R.hashedDyn (12::Int)] }

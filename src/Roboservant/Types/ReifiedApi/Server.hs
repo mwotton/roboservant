@@ -19,6 +19,7 @@
 module Roboservant.Types.ReifiedApi.Server(module Roboservant.Types.ReifiedApi.Server) where
 
 import Servant
+import Servant.Server.Generic (AsServer)
 
 import Control.Monad.Except (runExceptT)
 import Data.Bifunctor
@@ -42,6 +43,23 @@ instance ToReifiedApi '[] where
   toReifiedApi NoEndpoints _ = []
 
 instance
+  ( GenericServant routes AsServer
+  , FlattenServer (ToServantApi routes)
+  , Server (ToServantApi routes) ~ ToServant routes AsServer
+  , ToReifiedApi (Endpoints (ToServantApi routes))
+  , ToReifiedApi endpoints
+  ) =>
+  ToReifiedApi (NamedRoutes routes ': endpoints)
+  where
+  toReifiedApi (endpoint `AnEndpoint` endpoints) _ =
+    let nested = toReifiedApi
+                   (flattenServer @(ToServantApi routes) (toServant endpoint))
+                   (Proxy @(Endpoints (ToServantApi routes)))
+        offset = fromIntegral (length nested)
+     in nested ++ shiftOffsets offset (toReifiedApi endpoints (Proxy @endpoints))
+
+instance
+  {-# OVERLAPPABLE #-}
   ( NormalizeFunction (ServerT endpoint Handler)
   , Normal (ServerT endpoint Handler) ~ V.Curried (EndpointArgs endpoint) (IO (Either InteractionError (NonEmpty (Dynamic,Int))))
   , ToReifiedEndpoint endpoint
@@ -57,6 +75,9 @@ instance
     )
       : (map . first) (+1)
         (toReifiedApi endpoints (Proxy @endpoints))
+
+shiftOffsets :: ApiOffset -> ReifiedApi -> ReifiedApi
+shiftOffsets offset = map (first (+ offset))
 
 
 instance (Typeable x, Hashable x, Breakdown x) => NormalizeFunction (Handler x) where
@@ -103,6 +124,9 @@ instance
 
 instance FlattenServer (Verb method statusCode contentTypes responseType)
   where
+  flattenServer server = server `AnEndpoint` NoEndpoints
+
+instance FlattenServer (NamedRoutes routes) where
   flattenServer server = server `AnEndpoint` NoEndpoints
 
 class NormalizeFunction m where
