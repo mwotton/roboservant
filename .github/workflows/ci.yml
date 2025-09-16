@@ -6,28 +6,21 @@ on:
 
 jobs:
   stack:
-    name: ${{ matrix.os }}-${{ matrix.ghc }}-stack
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        stack: ["3.7.1"]
-        ghc: ["9.8.2", "9.6.5", "9.4.8"]
-        os: [ubuntu-latest]
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
 
-      - uses: haskell/actions/setup@v2
-        name: Setup Haskell Stack
+      - name: Setup Haskell Stack
+        uses: haskell/actions/setup@v2
         with:
-          ghc-version: ${{ matrix.ghc }}
-          stack-version: ${{ matrix.stack }}
           enable-stack: true
+          stack-version: '3.7.1'
 
       - name: Cache ~/.stack
         uses: actions/cache@v4
         with:
           path: ~/.stack
-          key: ${{ runner.os }}-${{ matrix.ghc }}-stack-${{ matrix.stack }}
+          key: ${{ runner.os }}-stack-${{ hashFiles('stack.yaml') }}
 
       - name: Test
         run: stack test
