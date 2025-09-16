@@ -4,6 +4,7 @@ version:             0.1.0.4
 github:              "mwotton/roboservant"
 license:             BSD3
 copyright:           "2020 Mark Wotton, Samuel Schlesinger"
+maintainer:          "mwotton@gmail.com"
 synopsis:            Automatic session-aware servant testing
 category:            Web
 description:         Please see the README on GitHub at <https://github.com/mwotton/roboservant#readme>
@@ -22,7 +23,7 @@ dependencies:
 - http-types >= 0.12 && < 0.13
 - lifted-base >= 0.2 && < 0.3
 - monad-control >= 1.0 && < 1.1
-- mtl
+- mtl >= 2.2 && < 2.4
 - servant >= 0.18 && < 0.21
 - servant-client >= 0.18 && < 0.21
 - servant-flatten >= 0.2 && < 0.3
