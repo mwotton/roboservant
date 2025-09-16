@@ -7,7 +7,7 @@ cabal-version: 1.12
 -- hash: 01f24e4e312d2eb8b6e8c33ff44dbe8e0c3d7cede96bc05f094d5a3874444a26
 
 name:           roboservant
-version:        0.1.0.3
+version:        0.1.0.4
 synopsis:       Automatic session-aware servant testing
 description:    Please see the README on GitHub at <https://github.com/mwotton/roboservant#readme>
 category:       Web

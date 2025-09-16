@@ -23,6 +23,8 @@ import Network.HTTP.Client       (newManager, defaultManagerSettings)
 import Roboservant.Types
 import Test.Hspec
 import Servant
+import Servant.API.Generic 
+import Servant.Server.Generic (AsServer)
 import GHC.Generics
 import Data.Typeable
 import Data.Hashable
@@ -128,6 +130,38 @@ build it up from components.
 ```haskell
 deriving via (Compound B) instance BuildFrom B
 deriving via (Atom B) instance Breakdown B
+```
+
+
+## Record APIs
+
+Roboservant can drive record-style servant APIs that use
+`Servant.API.Generic` and `Servant.Server.Generic`. Define the
+record-of-routes, provide a record server, and `fuzz` works as it does
+for vanilla route trees.
+
+```haskell
+data RecordRoutes mode = RecordRoutes
+  { recordGet :: mode :- Get '[JSON] Int
+  , recordDelete :: mode :- Capture "unused" Int :> Delete '[JSON] ()
+  }
+  deriving stock (Generic)
+
+type RecordApi = NamedRoutes RecordRoutes
+
+recordServer :: RecordRoutes AsServer
+recordServer =
+  RecordRoutes
+    { recordGet = pure 42
+    , recordDelete = const (pure ())
+    }
+
+recordSpec :: Spec
+recordSpec =
+  describe "record apis" $
+    it "fuzzes a NamedRoutes server" $
+      RS.fuzz @RecordApi recordServer config
+        >>= (`shouldSatisfy` isNothing)
 ```
 
 
