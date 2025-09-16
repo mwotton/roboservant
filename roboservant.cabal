@@ -1,10 +1,10 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.0.
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 01f24e4e312d2eb8b6e8c33ff44dbe8e0c3d7cede96bc05f094d5a3874444a26
+-- hash: c5f98b6556cef99489cc29bc60023fdae77023f490f29fb814583bd35e37be8e
 
 name:           roboservant
 version:        0.1.0.4
@@ -46,25 +46,25 @@ library
   ghc-options: -Wall -fwrite-ide-info -hiedir=.hie
   build-depends:
       base >=4.7 && <5
-    , bytestring
-    , containers
-    , dependent-map
-    , dependent-sum
-    , hashable
-    , http-types
-    , lifted-base
-    , monad-control
+    , bytestring >=0.11 && <0.13
+    , containers ==0.6.*
+    , dependent-map ==0.4.*
+    , dependent-sum ==0.7.*
+    , hashable >=1.4 && <1.6
+    , http-types ==0.12.*
+    , lifted-base ==0.2.*
+    , monad-control ==1.0.*
     , mtl
-    , random
-    , servant
-    , servant-client
-    , servant-flatten
-    , servant-server
-    , string-conversions
-    , text
-    , time
-    , unordered-containers
-    , vinyl
+    , random >=1.2 && <1.4
+    , servant >=0.18 && <0.21
+    , servant-client >=0.18 && <0.21
+    , servant-flatten ==0.2.*
+    , servant-server >=0.18 && <0.21
+    , string-conversions ==0.4.*
+    , text >=1.2 && <2.1
+    , time >=1.9 && <1.13
+    , unordered-containers >=0.2.10 && <0.3
+    , vinyl >=0.13 && <0.15
   default-language: Haskell2010
 
 test-suite example
@@ -78,32 +78,32 @@ test-suite example
   build-tool-depends:
       markdown-unlit:markdown-unlit
   build-depends:
-      aeson
+      aeson >=1.5 && <2.3
     , base >=4.7 && <5
-    , bytestring
-    , containers
-    , dependent-map
-    , dependent-sum
-    , hashable
+    , bytestring >=0.11 && <0.13
+    , containers ==0.6.*
+    , dependent-map ==0.4.*
+    , dependent-sum ==0.7.*
+    , hashable >=1.4 && <1.6
     , hspec
     , hspec-core
-    , http-client
-    , http-types
-    , lifted-base
-    , monad-control
+    , http-client >=0.5 && <0.8
+    , http-types ==0.12.*
+    , lifted-base ==0.2.*
+    , monad-control ==1.0.*
     , mtl
-    , random
+    , random >=1.2 && <1.4
     , roboservant
-    , servant
-    , servant-client
-    , servant-flatten
-    , servant-server
-    , string-conversions
-    , text
-    , time
-    , unordered-containers
-    , vinyl
-    , warp
+    , servant >=0.18 && <0.21
+    , servant-client >=0.18 && <0.21
+    , servant-flatten ==0.2.*
+    , servant-server >=0.18 && <0.21
+    , string-conversions ==0.4.*
+    , text >=1.2 && <2.1
+    , time >=1.9 && <1.13
+    , unordered-containers >=0.2.10 && <0.3
+    , vinyl >=0.13 && <0.15
+    , warp >=3.3 && <3.5
   default-language: Haskell2010
 
 test-suite roboservant-test
@@ -127,33 +127,33 @@ test-suite roboservant-test
       test
   ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -threaded -rtsopts -with-rtsopts=-N
   build-depends:
-      aeson
+      aeson >=1.5 && <2.3
     , base >=4.7 && <5
-    , bytestring
-    , containers
-    , dependent-map
-    , dependent-sum
-    , hashable
+    , bytestring >=0.11 && <0.13
+    , containers ==0.6.*
+    , dependent-map ==0.4.*
+    , dependent-sum ==0.7.*
+    , hashable >=1.4 && <1.6
     , hspec
     , hspec-core
     , hspec-wai
-    , http-api-data
-    , http-client
-    , http-types
-    , lifted-base
-    , monad-control
+    , http-api-data >=0.4 && <0.7
+    , http-client >=0.5 && <0.8
+    , http-types ==0.12.*
+    , lifted-base ==0.2.*
+    , monad-control ==1.0.*
     , mtl
-    , random
+    , random >=1.2 && <1.4
     , roboservant
-    , servant
-    , servant-client
-    , servant-flatten
-    , servant-server
-    , string-conversions
-    , text
-    , time
-    , unordered-containers
-    , vinyl
-    , wai
-    , warp
+    , servant >=0.18 && <0.21
+    , servant-client >=0.18 && <0.21
+    , servant-flatten ==0.2.*
+    , servant-server >=0.18 && <0.21
+    , string-conversions ==0.4.*
+    , text >=1.2 && <2.1
+    , time >=1.9 && <1.13
+    , unordered-containers >=0.2.10 && <0.3
+    , vinyl >=0.13 && <0.15
+    , wai ==3.2.*
+    , warp >=3.3 && <3.5
   default-language: Haskell2010

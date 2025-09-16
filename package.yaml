@@ -15,25 +15,25 @@ extra-source-files:
 dependencies:
 - base >= 4.7 && < 5
 
-- bytestring
-- containers
-- random
-- hashable
-- http-types
-- lifted-base
-- monad-control
+- bytestring >= 0.11 && < 0.13
+- containers >= 0.6 && < 0.7
+- random >= 1.2 && < 1.4
+- hashable >= 1.4 && < 1.6
+- http-types >= 0.12 && < 0.13
+- lifted-base >= 0.2 && < 0.3
+- monad-control >= 1.0 && < 1.1
 - mtl
-- servant # >= 0.17
-- servant-client # >= 0.17
-- servant-flatten
-- servant-server # >= 0.17
-- string-conversions
-- vinyl
-- dependent-sum
-- dependent-map
-- unordered-containers
-- text
-- time
+- servant >= 0.18 && < 0.21
+- servant-client >= 0.18 && < 0.21
+- servant-flatten >= 0.2 && < 0.3
+- servant-server >= 0.18 && < 0.21
+- string-conversions >= 0.4 && < 0.5
+- vinyl >= 0.13 && < 0.15
+- dependent-sum >= 0.7 && < 0.8
+- dependent-map >= 0.4 && < 0.5
+- unordered-containers >= 0.2.10 && < 0.3
+- text >= 1.2 && < 2.1
+- time >= 1.9 && < 1.13
 
 ghc-options:
 - -Wall
@@ -52,14 +52,14 @@ tests:
     - -with-rtsopts=-N
     dependencies:
     - roboservant
-    - aeson
+    - aeson >= 1.5 && < 2.3
     - hspec
     - hspec-core
-    - http-api-data
-    - http-client
+    - http-api-data >= 0.4 && < 0.7
+    - http-client >= 0.5 && < 0.8
     - hspec-wai
-    - wai
-    - warp
+    - wai >= 3.2 && < 3.3
+    - warp >= 3.3 && < 3.5
   example:
     main: Example.lhs
     source-dirs: .
@@ -67,9 +67,9 @@ tests:
     dependencies:
       - roboservant
       - hspec
-      - warp
-      - http-client
-      - aeson
+      - warp >= 3.3 && < 3.5
+      - http-client >= 0.5 && < 0.8
+      - aeson >= 1.5 && < 2.3
       - hspec-core
     ghc-options:    -pgmL markdown-unlit
 
