@@ -58,3 +58,6 @@ jobs:
       - name: Test
         run: |
           cabal test all --disable-optimization
+
+      - name: cabal check
+        run: cabal check
