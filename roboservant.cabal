@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 13209f99d9f8ea91e1c5b19e7bc4e414b5870701bc606f7f662de3f1ac3072e0
+-- hash: 8ccd54a3460dfc8fd8168db40554c3f53027afb3ee86458935ff90bb5460d223
 
 name:           roboservant
 version:        0.1.0.4
@@ -54,6 +54,7 @@ library
     , hashable >=1.4 && <1.6
     , http-types ==0.12.*
     , lifted-base ==0.2.*
+    , minithesis ==0.1.*
     , monad-control ==1.0.*
     , mtl >=2.2 && <2.4
     , random >=1.2 && <1.4
@@ -91,6 +92,7 @@ test-suite example
     , http-client >=0.5 && <0.8
     , http-types ==0.12.*
     , lifted-base ==0.2.*
+    , minithesis ==0.1.*
     , monad-control ==1.0.*
     , mtl >=2.2 && <2.4
     , random >=1.2 && <1.4
@@ -143,6 +145,7 @@ test-suite roboservant-test
     , http-client >=0.5 && <0.8
     , http-types ==0.12.*
     , lifted-base ==0.2.*
+    , minithesis ==0.1.*
     , monad-control ==1.0.*
     , mtl >=2.2 && <2.4
     , random >=1.2 && <1.4

@@ -18,6 +18,45 @@ packages:
       size: 709
   original:
     hackage: some-1.0.3
+- completed:
+    name: minithesis
+    pantry-tree:
+      sha256: 504819ce58ab870894028b917f4eebd04b2f67d21ef817ca9eaade45fe6088b7
+      size: 1637
+    sha256: 1ed1d99382ff8906eac72aca13cced39a461765b86c26a3f9f45faf437121cb0
+    size: 36916
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/1fc7854b45d1b1c01aab333621060ce223f8757b.tar.gz
+    version: 0.1.0.0
+  original:
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/1fc7854b45d1b1c01aab333621060ce223f8757b.tar.gz
+- completed:
+    hackage: hspec-2.11.9@sha256:6e7fb7a40404f11b028f1b19f07779887b2c8af04cbae7eaea73e83c440954c7,1763
+    pantry-tree:
+      sha256: 011f3767b57b7ecc9b34c390a6a0f9951bb0e503401365cf99ab79316ab2a898
+      size: 584
+  original:
+    hackage: hspec-2.11.9
+- completed:
+    hackage: hspec-core-2.11.9@sha256:a38fdefae046551335b56300e19b1ab2f902aa6401d1eb374e5ea81df85f6997,6826
+    pantry-tree:
+      sha256: 6ed4738349e4f030337bb0d1ee21e7191f47cbbe034395259ba9c39f49e14b25
+      size: 6233
+  original:
+    hackage: hspec-core-2.11.9
+- completed:
+    hackage: hspec-discover-2.11.9@sha256:74c689bf33d7373bac5d4ffe273fe0b034d277c30aa2a23d3790d5b365dbdf1c,2169
+    pantry-tree:
+      sha256: 9ab82dd8116be450aa1c6aedce68e6d4ce3993e59fae31021d9903f6233950db
+      size: 829
+  original:
+    hackage: hspec-discover-2.11.9
+- completed:
+    hackage: hspec-expectations-0.8.4@sha256:4237f094a7931202ff57ac6475542b0b314b50a7024550e2b6eb87cfb0d4ff93,1702
+    pantry-tree:
+      sha256: 87681840d430b84686f83f1ab8b5873b09c349775698665233443914acf9ba2b
+      size: 741
+  original:
+    hackage: hspec-expectations-0.8.4
 snapshots:
 - completed:
     sha256: 3770dfd79f5aed67acdcc65c4e7730adddffe6dba79ea723cfb0918356fc0f94
