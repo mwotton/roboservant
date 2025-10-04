@@ -24,6 +24,7 @@ dependencies:
 - lifted-base >= 0.2 && < 0.3
 - monad-control >= 1.0 && < 1.1
 - mtl >= 2.2 && < 2.4
+- minithesis >= 0.1 && < 0.2
 - servant >= 0.18 && < 0.21
 - servant-client >= 0.18 && < 0.21
 - servant-flatten >= 0.2 && < 0.3

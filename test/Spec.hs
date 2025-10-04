@@ -24,6 +24,7 @@ import qualified Post
 import qualified Put
 import qualified Product
 import qualified QueryParams
+import qualified MinithesisExample
 import qualified Records
 import qualified Roboservant as R
 import qualified Roboservant.Server as RS
@@ -125,6 +126,22 @@ spec = do
     fuzzBoth @Nested.FlatApi "can handle nested apis" Nested.server R.defaultConfig {R.coverageThreshold = 0.99}
     (`shouldSatisfy` isNothing)
 
+  describe "Minithesis prep" $ do
+    it "shrinker should minimize to two calls" $ do
+      let config =
+            R.defaultConfig
+              { R.rngSeed = 2024,
+                R.maxRuntime = 0.05,
+                R.maxReps = 200
+              }
+      report <- RS.fuzz @MinithesisExample.Api MinithesisExample.server config
+      case report of
+        Nothing -> expectationFailure "expected a failure report"
+        Just R.Report {rsException = R.RoboservantException {..}} -> do
+          failureReason `shouldBe` R.ServerCrashed
+          let callCount = length (R.path fuzzState)
+          callCount `shouldBe` 2
+
 serverFailure :: Maybe R.Report -> Bool
 serverFailure = \case
   Just R.Report {..} ->
@@ -159,6 +176,8 @@ deriving via (R.Compound Breakdown.Foo) instance R.Breakdown Breakdown.Foo
 deriving via (R.Compound Product.Foo) instance R.BuildFrom Product.Foo
 
 deriving via (R.Compound Breakdown.SomeSum) instance R.Breakdown Breakdown.SomeSum
+deriving via (R.Atom MinithesisExample.Secret) instance R.Breakdown MinithesisExample.Secret
+deriving via (R.Atom MinithesisExample.Secret) instance R.BuildFrom MinithesisExample.Secret
 
 -- | `shouldFail` allows you to assert that a given `Spec` should contain at least one failing test.
 --   this is often useful when testing tests.
