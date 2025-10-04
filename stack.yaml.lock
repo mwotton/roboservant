@@ -12,33 +12,19 @@ packages:
   original:
     hackage: servant-flatten-0.2@sha256:276896f7c5cdec5b8f8493f6205fded0cc602d050b58fdb09a6d7c85c3bb0837,1234
 - completed:
-    hackage: some-1.0.3@sha256:938cec5fc0d3a08dde34cfc0acd5a0aa2e9fd489c9dbb64417f16588dfb47af0,2399
-    pantry-tree:
-      sha256: b88dddc6b991cd570c6750f8d309a9feb76938b29a690abdabc4ababb8c7b2f8
-      size: 709
-  original:
-    hackage: some-1.0.3
-- completed:
     name: minithesis
     pantry-tree:
-      sha256: 64da43bd92e968a1c66509991759971c09a3c3fc349dfdea3256225b9c227b19
-      size: 1637
-    sha256: a70cbaa54c48e673a926edc60696ac2b076a71df08e1020ce6ed628ce4779684
-    size: 36921
-    url: https://github.com/lambdamechanic/minithesis-hs/archive/6018c69338736a4b876dfcbe70609ec3f4cd6799.tar.gz
+      sha256: b4789e933bc113696635d4e4298d49f5aa5e63072789bb9c2f87b4786e2c1d77
+      size: 1690
+    sha256: 5fd8633b67556a0e7ffff9c6ccddcfc6717497cc345e689af8f6ad759e462c86
+    size: 37456
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/4045524d7efdbbbb0f9dc0b22393486a908453ad.tar.gz
     version: 0.1.0.0
   original:
-    url: https://github.com/lambdamechanic/minithesis-hs/archive/6018c69338736a4b876dfcbe70609ec3f4cd6799.tar.gz
-- completed:
-    hackage: sydtest-0.15.0.0@sha256:02c57f071c2beb10cc9ac1c2fb48a95cabe587969fbd0bc7e998f89701783bbe,3959
-    pantry-tree:
-      sha256: 8cffdf8ed85451016400dab72490c7ee967d23e03379a56719e32935a0e63863
-      size: 3785
-  original:
-    hackage: sydtest-0.15.0.0
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/4045524d7efdbbbb0f9dc0b22393486a908453ad.tar.gz
 snapshots:
 - completed:
-    sha256: 3770dfd79f5aed67acdcc65c4e7730adddffe6dba79ea723cfb0918356fc0f94
-    size: 648660
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/4.yaml
-  original: lts-20.4
+    sha256: 95817c7fe8ae8ca6e8f4ecfd3e876b3edc4e5fbba9f8d8f757e87b484f9bfe6b
+    size: 726101
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/24/13.yaml
+  original: lts-24.13

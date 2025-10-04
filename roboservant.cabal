@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5b4f4e5c9ed0cdbf478a495864807d220b609892cc667e6ce5cfa0ff25e3c5a7
+-- hash: 963c05035341e582510e656d3df8508516ff7f5e44c1b76ee1cbc3b21b7a86dd
 
 name:           roboservant
 version:        0.1.0.4
@@ -48,7 +48,7 @@ library
   build-depends:
       base >=4.7 && <5
     , bytestring >=0.11 && <0.13
-    , containers ==0.6.*
+    , containers >=0.6 && <0.8
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
@@ -63,7 +63,7 @@ library
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
-    , text >=1.2 && <2.1
+    , text >=1.2 && <2.3
     , time >=1.9 && <1.13
     , unordered-containers >=0.2.10 && <0.3
     , vinyl >=0.13 && <0.15
@@ -83,7 +83,7 @@ test-suite example
       aeson >=1.5 && <2.3
     , base >=4.7 && <5
     , bytestring >=0.11 && <0.13
-    , containers ==0.6.*
+    , containers >=0.6 && <0.8
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
@@ -100,8 +100,8 @@ test-suite example
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
-    , sydtest ==0.15.*
-    , text >=1.2 && <2.1
+    , sydtest >=0.15 && <0.22
+    , text >=1.2 && <2.3
     , time >=1.9 && <1.13
     , unordered-containers >=0.2.10 && <0.3
     , vinyl >=0.13 && <0.15
@@ -133,7 +133,7 @@ test-suite roboservant-test
       aeson >=1.5 && <2.3
     , base >=4.7 && <5
     , bytestring >=0.11 && <0.13
-    , containers ==0.6.*
+    , containers >=0.6 && <0.8
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
@@ -152,8 +152,8 @@ test-suite roboservant-test
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
-    , sydtest ==0.15.*
-    , text >=1.2 && <2.1
+    , sydtest >=0.15 && <0.22
+    , text >=1.2 && <2.3
     , time >=1.9 && <1.13
     , unordered-containers >=0.2.10 && <0.3
     , vinyl >=0.13 && <0.15

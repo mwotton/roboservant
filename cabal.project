@@ -3,6 +3,6 @@ packages: .
 source-repository-package
   type: git
   location: https://github.com/lambdamechanic/minithesis-hs.git
-  tag: 6018c69338736a4b876dfcbe70609ec3f4cd6799
+  tag: 4045524d7efdbbbb0f9dc0b22393486a908453ad
 
 constraints: envparse < 0.6
