@@ -21,42 +21,21 @@ packages:
 - completed:
     name: minithesis
     pantry-tree:
-      sha256: 504819ce58ab870894028b917f4eebd04b2f67d21ef817ca9eaade45fe6088b7
+      sha256: 64da43bd92e968a1c66509991759971c09a3c3fc349dfdea3256225b9c227b19
       size: 1637
-    sha256: 1ed1d99382ff8906eac72aca13cced39a461765b86c26a3f9f45faf437121cb0
-    size: 36916
-    url: https://github.com/lambdamechanic/minithesis-hs/archive/1fc7854b45d1b1c01aab333621060ce223f8757b.tar.gz
+    sha256: a70cbaa54c48e673a926edc60696ac2b076a71df08e1020ce6ed628ce4779684
+    size: 36921
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/6018c69338736a4b876dfcbe70609ec3f4cd6799.tar.gz
     version: 0.1.0.0
   original:
-    url: https://github.com/lambdamechanic/minithesis-hs/archive/1fc7854b45d1b1c01aab333621060ce223f8757b.tar.gz
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/6018c69338736a4b876dfcbe70609ec3f4cd6799.tar.gz
 - completed:
-    hackage: hspec-2.11.9@sha256:6e7fb7a40404f11b028f1b19f07779887b2c8af04cbae7eaea73e83c440954c7,1763
+    hackage: sydtest-0.15.0.0@sha256:02c57f071c2beb10cc9ac1c2fb48a95cabe587969fbd0bc7e998f89701783bbe,3959
     pantry-tree:
-      sha256: 011f3767b57b7ecc9b34c390a6a0f9951bb0e503401365cf99ab79316ab2a898
-      size: 584
+      sha256: 8cffdf8ed85451016400dab72490c7ee967d23e03379a56719e32935a0e63863
+      size: 3785
   original:
-    hackage: hspec-2.11.9
-- completed:
-    hackage: hspec-core-2.11.9@sha256:a38fdefae046551335b56300e19b1ab2f902aa6401d1eb374e5ea81df85f6997,6826
-    pantry-tree:
-      sha256: 6ed4738349e4f030337bb0d1ee21e7191f47cbbe034395259ba9c39f49e14b25
-      size: 6233
-  original:
-    hackage: hspec-core-2.11.9
-- completed:
-    hackage: hspec-discover-2.11.9@sha256:74c689bf33d7373bac5d4ffe273fe0b034d277c30aa2a23d3790d5b365dbdf1c,2169
-    pantry-tree:
-      sha256: 9ab82dd8116be450aa1c6aedce68e6d4ce3993e59fae31021d9903f6233950db
-      size: 829
-  original:
-    hackage: hspec-discover-2.11.9
-- completed:
-    hackage: hspec-expectations-0.8.4@sha256:4237f094a7931202ff57ac6475542b0b314b50a7024550e2b6eb87cfb0d4ff93,1702
-    pantry-tree:
-      sha256: 87681840d430b84686f83f1ab8b5873b09c349775698665233443914acf9ba2b
-      size: 741
-  original:
-    hackage: hspec-expectations-0.8.4
+    hackage: sydtest-0.15.0.0
 snapshots:
 - completed:
     sha256: 3770dfd79f5aed67acdcc65c4e7730adddffe6dba79ea723cfb0918356fc0f94

@@ -12,6 +12,9 @@ import Data.Hashable
 import Data.Typeable (Typeable)
 import GHC.Generics (Generic)
 import Servant
+import qualified Data.ByteString.Lazy.Char8 as LBS
+import Control.Monad.Except (throwError)
+import Servant.Server (err500)
 
 newtype Seed = Seed Int
   deriving (Generic, Eq, Show, Typeable)
@@ -29,5 +32,5 @@ type Api =
 
 server :: Server Api
 server =
-  (\(Seed _) -> error "we blow up if we get here")
+  (\(Seed _) -> throwError err500 { errBody = LBS.pack "boom" })
     :<|> pure ()
