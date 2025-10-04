@@ -69,7 +69,6 @@ import Minithesis
   ( RunOptions (..),
     TestCase,
     choice,
-    directoryDatabase,
     property,
     resolveRunOptionsWith,
     runProperty,
@@ -159,7 +158,6 @@ fuzz' reifiedApi config = handle (pure . Just . formatException) $ do
 
 configureRunOptions :: Config -> IO RunOptions
 configureRunOptions cfg = do
-  db <- directoryDatabase ".stack-work/minithesis-cache"
   let maxExamples = max 1 (min (maxRepsInt cfg) 64)
   resolveRunOptionsWith $ \opts ->
     opts
@@ -167,7 +165,7 @@ configureRunOptions cfg = do
         runQuiet = True,
         runSeed = Just (rngSeed cfg),
         runPrinter = logInfo cfg,
-        runDatabase = Just db,
+        runDatabase = Nothing,
         runDatabaseKey = "roboservant"
       }
 

@@ -10,7 +10,4 @@ extra-deps:
 - some-1.0.3
 - github: lambdamechanic/minithesis-hs
   commit: 1fc7854b45d1b1c01aab333621060ce223f8757b
-- hspec-2.11.9
-- hspec-core-2.11.9
-- hspec-discover-2.11.9
-- hspec-expectations-0.8.4
+- sydtest-0.15.0.0

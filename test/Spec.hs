@@ -30,19 +30,21 @@ import qualified Roboservant as R
 import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
 import qualified Seeded
-import Test.Hspec
-import Test.Hspec.Core.Spec (FailureReason (Reason), ResultStatus (Failure, Success), itemExample, mapSpecItem_, resultStatus)
+import Test.Syd
 import qualified Valid
 import Servant ( Server, Proxy(..), serve, Endpoints, HasServer )
 
 import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClient,ClientM)
 import Network.Wai(Application)
 import qualified Network.Wai.Handler.Warp as Warp
-import           Network.HTTP.Client       (newManager, defaultManagerSettings)
-import Control.Monad((>=>))
+import           Network.HTTP.Client       (Manager, defaultManagerSettings, managerResponseTimeout, newManager, responseTimeoutMicro)
+import qualified Network.Socket as Socket
+
+newTestManager :: IO Manager
+newTestManager = newManager defaultManagerSettings { managerResponseTimeout = responseTimeoutMicro 1000000 }
 
 main :: IO ()
-main = hspec spec
+main = sydTest spec
 
 fuzzBoth
   :: forall a .
@@ -57,12 +59,23 @@ fuzzBoth name server config condition = do
     it (name <> " via client") $ \(clientEnv::ClientEnv) -> do
     RC.fuzz @a clientEnv config >>= condition
 
-withServer :: Application -> ActionWith ClientEnv -> IO ()
-withServer app action = Warp.testWithApplication (pure app) (genClientEnv >=> action)
+withServer :: Application -> ((ClientEnv -> IO ()) -> IO ())
+withServer app inner = Warp.testWithApplication (pure app) $ \port -> do
+  env <- genClientEnv port
+  inner env
   where genClientEnv port = do
           baseUrl <- parseBaseUrl "http://localhost"
-          manager <- newManager defaultManagerSettings
+          manager <- newTestManager
           pure $ mkClientEnv manager (baseUrl { baseUrlPort = port })
+
+withClosedPort :: ((ClientEnv -> IO ()) -> IO ())
+withClosedPort inner = do
+  (port, sock) <- Warp.openFreePort
+  Socket.close sock
+  manager <- newTestManager
+  baseUrl <- parseBaseUrl ("http://127.0.0.1:" <> show port)
+  let env = mkClientEnv manager baseUrl
+  inner env
 
 spec :: Spec
 spec = do
@@ -92,8 +105,13 @@ spec = do
 
     describe "seeded" $ do
       let res = Seeded.Seed 1
-      shouldFail $ fuzzBoth @Seeded.Api "finds an error using information passed in" Seeded.server
-        (R.defaultConfig {R.seed = [(toDyn res, hash res)]})
+          seededConfig =
+            R.defaultConfig
+              { R.seed = [(toDyn res, hash res)],
+                R.maxReps = 1
+              }
+      expectFailing $ fuzzBoth @Seeded.Api "finds an error using information passed in" Seeded.server
+        seededConfig
         (`shouldSatisfy` isNothing)
 
     describe "Foo" $
@@ -117,6 +135,11 @@ spec = do
       fuzzBoth @Product.Api "should find a failure that's dependent on creating a product" Product.server
       R.defaultConfig {R.seed = [R.hashedDyn 'a', R.hashedDyn (1 :: Int)]}
       (`shouldSatisfy` serverFailure)
+  describe "Server health" $ do
+    it "reports when the server port is closed" $
+      withClosedPort $ \(clientEnv :: ClientEnv) -> do
+        RC.fuzz @Valid.Api clientEnv R.defaultConfig { R.maxReps = 1 }
+          >>= (`shouldSatisfy` serverFailure)
   describe "Breakdown" $ do
     fuzzBoth @Breakdown.ProductApi "handles products"  Breakdown.productServer R.defaultConfig
       (`shouldSatisfy` serverFailure)
@@ -181,19 +204,3 @@ deriving via (R.Atom MinithesisExample.Secret) instance R.BuildFrom MinithesisEx
 
 -- | `shouldFail` allows you to assert that a given `Spec` should contain at least one failing test.
 --   this is often useful when testing tests.
-shouldFail :: SpecWith a -> SpecWith a
-shouldFail =
-  mapSpecItem_
-    ( \i ->
-        i
-          { itemExample = \p a cb -> do
-              r <- itemExample i p a cb
-              pure
-                r
-                  { resultStatus = case resultStatus r of
-                      Success -> Failure Nothing (Reason "Unexpected success")
-                      Failure _ _ -> Success
-                      x -> x
-                  }
-          }
-    )

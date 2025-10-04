@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 8ccd54a3460dfc8fd8168db40554c3f53027afb3ee86458935ff90bb5460d223
+-- hash: 5b4f4e5c9ed0cdbf478a495864807d220b609892cc667e6ce5cfa0ff25e3c5a7
 
 name:           roboservant
 version:        0.1.0.4
@@ -87,8 +87,6 @@ test-suite example
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
-    , hspec
-    , hspec-core
     , http-client >=0.5 && <0.8
     , http-types ==0.12.*
     , lifted-base ==0.2.*
@@ -102,6 +100,7 @@ test-suite example
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
+    , sydtest ==0.15.*
     , text >=1.2 && <2.1
     , time >=1.9 && <1.13
     , unordered-containers >=0.2.10 && <0.3
@@ -138,9 +137,6 @@ test-suite roboservant-test
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
-    , hspec
-    , hspec-core
-    , hspec-wai
     , http-api-data >=0.4 && <0.7
     , http-client >=0.5 && <0.8
     , http-types ==0.12.*
@@ -148,6 +144,7 @@ test-suite roboservant-test
     , minithesis ==0.1.*
     , monad-control ==1.0.*
     , mtl >=2.2 && <2.4
+    , network >=3.1 && <3.3
     , random >=1.2 && <1.4
     , roboservant
     , servant >=0.18 && <0.21
@@ -155,6 +152,7 @@ test-suite roboservant-test
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
+    , sydtest ==0.15.*
     , text >=1.2 && <2.1
     , time >=1.9 && <1.13
     , unordered-containers >=0.2.10 && <0.3

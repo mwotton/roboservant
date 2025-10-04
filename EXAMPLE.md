@@ -19,9 +19,9 @@ Our api under test:
 import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
 import Servant.Client(ClientEnv, baseUrlPort, parseBaseUrl, mkClientEnv)
-import Network.HTTP.Client       (newManager, defaultManagerSettings)
+import Network.HTTP.Client       (defaultManagerSettings, managerResponseTimeout, newManager, responseTimeoutMicro)
 import Roboservant.Types
-import Test.Hspec
+import Test.Syd
 import Servant
 import Servant.API.Generic 
 import Servant.Server.Generic (AsServer)
@@ -73,7 +73,7 @@ In the test file, we first define the tests: the faulty server should fail and t
 
 ```haskell
 main :: IO ()
-main = hspec spec
+main = sydTest spec
 
 spec :: Spec
 spec = describe "example" $ do
@@ -168,10 +168,10 @@ recordSpec =
 test utilities:
 
 ``` haskell
-withServer :: Application -> ActionWith ClientEnv -> IO ()
+withServer :: Application -> ((ClientEnv -> IO ()) -> IO ())
 withServer app action = Warp.withApplication (pure app) (\p -> genClientEnv p >>= action)
   where genClientEnv port = do
           baseUrl <- parseBaseUrl "http://localhost"
-          manager <- newManager defaultManagerSettings
+          manager <- newManager defaultManagerSettings { managerResponseTimeout = responseTimeoutMicro 1000000 }
           pure $ mkClientEnv manager (baseUrl { baseUrlPort = port })
 ```
