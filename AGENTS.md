@@ -9,6 +9,7 @@
 - `stack build` compiles the library and executables against the resolver specified in `stack.yaml`.
 - `stack test` runs the full Hspec suite under `test/Spec.hs`; expect long runs on first invocation while Stack builds dependencies.
 - `stack exec -- example` executes the literate integration example defined in `Example.lhs`.
+- Keep CI pinned to the GHC releases marked “suitable for use” on [the GHC status page](https://gitlab.haskell.org/ghc/ghc/-/wikis/GHC%20Status#all-released-ghc-versions).
 
 ## Coding Style & Naming Conventions
 - Follow the existing Haskell style: two-space indentation, record fields in camelCase (e.g., `complexRecordServer`), and module names in `Camel.Case`.

@@ -12,33 +12,33 @@ packages:
   original:
     hackage: servant-flatten-0.2@sha256:276896f7c5cdec5b8f8493f6205fded0cc602d050b58fdb09a6d7c85c3bb0837,1234
 - completed:
-    hackage: some-1.0.3@sha256:938cec5fc0d3a08dde34cfc0acd5a0aa2e9fd489c9dbb64417f16588dfb47af0,2399
+    hackage: some-1.0.6@sha256:f12c26dc27fb392fd7703d69abd58857b1a0bc2e1e2606ea19d8e6b7bf6c902b,2157
     pantry-tree:
-      sha256: b88dddc6b991cd570c6750f8d309a9feb76938b29a690abdabc4ababb8c7b2f8
-      size: 709
+      sha256: 8f78623a319865d12d2c7c90141f7b76b058a8f0f0a821632f062ce2fde2798f
+      size: 823
   original:
-    hackage: some-1.0.3
+    hackage: some-1.0.6
 - completed:
     name: minithesis
     pantry-tree:
-      sha256: 64da43bd92e968a1c66509991759971c09a3c3fc349dfdea3256225b9c227b19
-      size: 1637
-    sha256: a70cbaa54c48e673a926edc60696ac2b076a71df08e1020ce6ed628ce4779684
-    size: 36921
-    url: https://github.com/lambdamechanic/minithesis-hs/archive/6018c69338736a4b876dfcbe70609ec3f4cd6799.tar.gz
+      sha256: da25880119808032b6563d624bb05d51a5286bebccdc173a30bdeaef6de2151a
+      size: 1690
+    sha256: 93919d96dc18d5f8c10ab8fd27550a90b3020e02dd3e7bd6fdb997d4ae2ab22a
+    size: 37563
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/0d8a0ecee3940055fd71ab92d3f011e1d1aa2f3a.tar.gz
     version: 0.1.0.0
   original:
-    url: https://github.com/lambdamechanic/minithesis-hs/archive/6018c69338736a4b876dfcbe70609ec3f4cd6799.tar.gz
+    url: https://github.com/lambdamechanic/minithesis-hs/archive/0d8a0ecee3940055fd71ab92d3f011e1d1aa2f3a.tar.gz
 - completed:
-    hackage: sydtest-0.15.0.0@sha256:02c57f071c2beb10cc9ac1c2fb48a95cabe587969fbd0bc7e998f89701783bbe,3959
+    hackage: sydtest-0.21.0.0@sha256:cffa077d86a835a7031735abf8922b1781f023100988d09880ff87357877e82f,2425
     pantry-tree:
-      sha256: 8cffdf8ed85451016400dab72490c7ee967d23e03379a56719e32935a0e63863
-      size: 3785
+      sha256: 40ad88d0081e463b5018d1dffeb41a4276e08f835f6fb0cc61d39a4f4d142c97
+      size: 2035
   original:
-    hackage: sydtest-0.15.0.0
+    hackage: sydtest-0.21.0.0
 snapshots:
 - completed:
-    sha256: 3770dfd79f5aed67acdcc65c4e7730adddffe6dba79ea723cfb0918356fc0f94
-    size: 648660
-    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/20/4.yaml
-  original: lts-20.4
+    sha256: 95817c7fe8ae8ca6e8f4ecfd3e876b3edc4e5fbba9f8d8f757e87b484f9bfe6b
+    size: 726101
+    url: https://raw.githubusercontent.com/commercialhaskell/stackage-snapshots/master/lts/24/13.yaml
+  original: lts-24.13

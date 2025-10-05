@@ -1,10 +1,8 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.38.0.
+-- This file has been generated from package.yaml by hpack version 0.37.0.
 --
 -- see: https://github.com/sol/hpack
---
--- hash: 3930e07404b38999a691c04b24bc8f204d5a3fa0a6d4549eefa657337621fd9f
 
 name:           roboservant
 version:        0.1.0.4
@@ -100,7 +98,7 @@ test-suite example
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
-    , sydtest ==0.15.*
+    , sydtest >=0.15 && <0.22
     , text >=1.2 && <2.2
     , time >=1.9 && <1.16
     , unordered-containers >=0.2.10 && <0.3
@@ -152,7 +150,7 @@ test-suite roboservant-test
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
-    , sydtest ==0.15.*
+    , sydtest >=0.15 && <0.22
     , text >=1.2 && <2.2
     , time >=1.9 && <1.16
     , unordered-containers >=0.2.10 && <0.3
