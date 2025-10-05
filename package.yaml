@@ -14,10 +14,10 @@ extra-source-files:
 - ChangeLog.md
 
 dependencies:
-- base >= 4.7 && < 5
+- base >= 4.7 && < 4.22
 
 - bytestring >= 0.11 && < 0.13
-- containers >= 0.6 && < 0.7
+- containers >= 0.6 && < 0.9
 - random >= 1.2 && < 1.4
 - hashable >= 1.4 && < 1.6
 - http-types >= 0.12 && < 0.13
@@ -34,8 +34,8 @@ dependencies:
 - dependent-sum >= 0.7 && < 0.8
 - dependent-map >= 0.4 && < 0.5
 - unordered-containers >= 0.2.10 && < 0.3
-- text >= 1.2 && < 2.1
-- time >= 1.9 && < 1.13
+- text >= 1.2 && < 2.3
+- time >= 1.9 && < 1.16
 
 ghc-options:
 - -Wall
@@ -58,7 +58,7 @@ tests:
     - http-api-data >= 0.4 && < 0.7
     - http-client >= 0.5 && < 0.8
     - network >= 3.1 && < 3.3
-    - sydtest >= 0.15 && < 0.16
+    - sydtest >= 0.15 && < 0.22
     - wai >= 3.2 && < 3.3
     - warp >= 3.3 && < 3.5
   example:
@@ -67,7 +67,7 @@ tests:
 
     dependencies:
       - roboservant
-      - sydtest >= 0.15 && < 0.16
+      - sydtest >= 0.15 && < 0.22
       - warp >= 3.3 && < 3.5
       - http-client >= 0.5 && < 0.8
       - aeson >= 1.5 && < 2.3
