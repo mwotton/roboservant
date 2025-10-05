@@ -34,7 +34,7 @@ dependencies:
 - dependent-sum >= 0.7 && < 0.8
 - dependent-map >= 0.4 && < 0.5
 - unordered-containers >= 0.2.10 && < 0.3
-- text >= 1.2 && < 2.3
+- text >= 1.2 && < 2.2
 - time >= 1.9 && < 1.16
 
 ghc-options:
