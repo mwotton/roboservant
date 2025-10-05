@@ -4,7 +4,7 @@ cabal-version: 1.12
 --
 -- see: https://github.com/sol/hpack
 --
--- hash: 5b4f4e5c9ed0cdbf478a495864807d220b609892cc667e6ce5cfa0ff25e3c5a7
+-- hash: 3930e07404b38999a691c04b24bc8f204d5a3fa0a6d4549eefa657337621fd9f
 
 name:           roboservant
 version:        0.1.0.4
@@ -46,9 +46,9 @@ library
       src
   ghc-options: -Wall -fwrite-ide-info -hiedir=.hie
   build-depends:
-      base >=4.7 && <5
+      base >=4.7 && <4.22
     , bytestring >=0.11 && <0.13
-    , containers ==0.6.*
+    , containers >=0.6 && <0.9
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
@@ -63,8 +63,8 @@ library
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
-    , text >=1.2 && <2.1
-    , time >=1.9 && <1.13
+    , text >=1.2 && <2.2
+    , time >=1.9 && <1.16
     , unordered-containers >=0.2.10 && <0.3
     , vinyl >=0.13 && <0.15
   default-language: Haskell2010
@@ -81,9 +81,9 @@ test-suite example
       markdown-unlit:markdown-unlit
   build-depends:
       aeson >=1.5 && <2.3
-    , base >=4.7 && <5
+    , base >=4.7 && <4.22
     , bytestring >=0.11 && <0.13
-    , containers ==0.6.*
+    , containers >=0.6 && <0.9
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
@@ -101,8 +101,8 @@ test-suite example
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
     , sydtest ==0.15.*
-    , text >=1.2 && <2.1
-    , time >=1.9 && <1.13
+    , text >=1.2 && <2.2
+    , time >=1.9 && <1.16
     , unordered-containers >=0.2.10 && <0.3
     , vinyl >=0.13 && <0.15
     , warp >=3.3 && <3.5
@@ -131,9 +131,9 @@ test-suite roboservant-test
   ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       aeson >=1.5 && <2.3
-    , base >=4.7 && <5
+    , base >=4.7 && <4.22
     , bytestring >=0.11 && <0.13
-    , containers ==0.6.*
+    , containers >=0.6 && <0.9
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
@@ -153,8 +153,8 @@ test-suite roboservant-test
     , servant-server >=0.18 && <0.21
     , string-conversions ==0.4.*
     , sydtest ==0.15.*
-    , text >=1.2 && <2.1
-    , time >=1.9 && <1.13
+    , text >=1.2 && <2.2
+    , time >=1.9 && <1.16
     , unordered-containers >=0.2.10 && <0.3
     , vinyl >=0.13 && <0.15
     , wai ==3.2.*
