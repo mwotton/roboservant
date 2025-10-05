@@ -15,12 +15,14 @@ jobs:
       fail-fast: false
       matrix:
         versions:
-          - ghc: '9.8.2'
-            cabal: '3.10.2.0'
-          - ghc: '9.6.5'
-            cabal: '3.10.2.0'
-          - ghc: '9.4.8'
-            cabal: '3.10.2.0'
+          - ghc: '9.12.2'
+            cabal: '3.12.1.0'
+          - ghc: '9.10.3'
+            cabal: '3.12.1.0'
+          - ghc: '9.8.4'
+            cabal: '3.12.1.0'
+          - ghc: '9.6.7'
+            cabal: '3.12.1.0'
     steps:
       - uses: actions/checkout@v4
 
