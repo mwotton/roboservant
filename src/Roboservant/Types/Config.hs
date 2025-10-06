@@ -35,6 +35,7 @@ data CallOutcome
 data CallSummary
   = CallSummary
       { csMethod :: Text,
+        csStatus :: Maybe Int,
         csPathSegments :: [Text],
         csQueryItems :: [(Text, Text)],
         csHeaders :: [(Text, Text)],
@@ -60,10 +61,11 @@ data TraceCheck
         traceCheck :: [CallTrace] -> Maybe String
       }
 
-emptySummary :: Text -> CallSummary
-emptySummary method =
+emptySummary :: Text -> Maybe Int -> CallSummary
+emptySummary method status =
   CallSummary
     { csMethod = method,
+      csStatus = status,
       csPathSegments = [],
       csQueryItems = [],
       csHeaders = [],
@@ -106,10 +108,10 @@ callSummaryLines CallSummary {..} =
           let pairs = [key <> "=" <> value | (key, value) <- csQueryItems]
            in "?" <> T.intercalate "&" pairs
     baseLine = csMethod <> " " <> pathTxt <> queryTxt
-    (firstLine, outcomeLines) = case csOutcome of
-      CallSucceeded [] -> (baseLine <> " -> ok", [])
+    statusTxt = maybe "" (\code -> " " <> T.pack (show code)) csStatus
+    (firstLine, responseLines) = case csOutcome of
       CallSucceeded vals ->
-        (baseLine <> " -> ok", map ("  response: " <>) vals)
+        (baseLine <> " ->" <> statusTxt <> " ok", map ("  response: " <>) vals)
       CallFailed err ->
         ( baseLine <> " -> ERROR " <> errorMessage err
             <> if fatalError err then " (fatal)" else "",
@@ -118,7 +120,7 @@ callSummaryLines CallSummary {..} =
     headerLines = map (\(k, v) -> "  header " <> k <> ": " <> v) csHeaders
     bodyLines = map ("  body: " <>) csBody
     noteLines = map ("  note: " <>) csNotes
-    extras = outcomeLines <> headerLines <> bodyLines <> noteLines
+    extras = bodyLines <> responseLines <> headerLines <> noteLines
 
 defaultConfig :: Config
 defaultConfig =

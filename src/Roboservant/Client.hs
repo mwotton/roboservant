@@ -20,7 +20,8 @@ module Roboservant.Client where
 import Data.Proxy
 import Servant.Client
 import Roboservant.Types
-import Roboservant(Report, fuzz')
+import Roboservant.Direct (Report)
+import qualified Roboservant.Direct as RD
 import Servant
 import Data.Bifunctor
 import Data.List.NonEmpty (NonEmpty)
@@ -31,27 +32,22 @@ import Control.Monad.Reader
 import Data.Hashable
 import Network.HTTP.Types.Status
 import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
+import Minithesis (Property, TestCase)
 
+fuzz :: forall api.
+  (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
+  ClientEnv -> Config -> IO (Maybe Report)
+fuzz clientEnv = RD.fuzz' (reifyClient @api clientEnv)
 
--- fuzz :: forall api.
---               (FlattenServer api, ToReifiedApi (Endpoints api)) =>
---               Server api ->
---               Config ->
---               IO (Maybe Report)
--- fuzz s  = fuzz' (reifyServer s)
---   -- todo: how do we pull reifyServer out?
---   where reifyServer :: (FlattenServer api, ToReifiedApi (Endpoints api))
---                     => Server api -> ReifiedApi
---         reifyServer server = toReifiedApi (flattenServer @api server) (Proxy @(Endpoints api))
+fuzzProperty :: forall api.
+  (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
+  ClientEnv -> Config -> Property
+fuzzProperty clientEnv = RD.fuzzProperty (reifyClient @api clientEnv)
 
-fuzz :: forall api . (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api)
-     => ClientEnv -> Config -> IO (Maybe Report)
-fuzz clientEnv
-  = fuzz'
-      (toReifiedClientApi
-         (flattenClient @api apiClient) (Proxy @(Endpoints api)) clientEnv)
-  where apiClient = client (Proxy @api)
-
+fuzzTestCase :: forall api.
+  (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
+  ClientEnv -> Config -> TestCase -> IO (Maybe Report)
+fuzzTestCase clientEnv = RD.runFuzzTestCase (reifyClient @api clientEnv)
 
 fuzzWithManager :: forall api.
   (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
@@ -74,6 +70,18 @@ fuzzUrl url config =
   case parseBaseUrl url of
     Left err -> pure (Left (show err))
     Right baseUrl -> Right <$> fuzzBaseUrl @api baseUrl config
+
+
+reifyClient :: forall api.
+  (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
+  ClientEnv -> ReifiedApi
+reifyClient clientEnv =
+  toReifiedClientApi
+    (flattenClient @api apiClient)
+    (Proxy @(Endpoints api))
+    clientEnv
+  where
+    apiClient = client (Proxy @api)
 
 
 

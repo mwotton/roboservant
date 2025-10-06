@@ -16,6 +16,8 @@
 
 module Roboservant.Direct
   ( fuzz',
+    fuzzProperty,
+    runFuzzTestCase,
     Config (..),
     -- TODO come up with something smarter than exporting all this, we should
     -- have some nice error-display functions
@@ -24,6 +26,7 @@ module Roboservant.Direct
     FuzzOp (..),
     FailureType (..),
     Report (..),
+    reportFromException,
   )
 where
 
@@ -99,13 +102,15 @@ import System.FilePath (takeDirectory)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Minithesis
-  ( RunOptions (..),
+  ( Property,
+    RunOptions (..),
     TestCase,
     choice,
     property,
     resolveRunOptionsWith,
     runProperty,
     scopedDatabase,
+    withRunOptions,
   )
 
 data RoboservantException
@@ -268,7 +273,7 @@ valueTextsForQueryParams dyn =
 
 describeEndpointDoc :: EndpointDoc as -> V.Rec SelectedArg as -> CallSummary
 describeEndpointDoc EndpointDoc {..} selected =
-  let initial = emptySummary docMethod
+  let initial = emptySummary docMethod docStatus
       withPath = F.foldl' (applyPath selected) initial docPathPieces
       withQuery = F.foldl' (applyQuery selected) withPath docQueryPieces
       withHeaders = F.foldl' (applyHeader selected) withQuery docHeaderPieces
@@ -340,24 +345,41 @@ fuzz' ::
   ReifiedApi ->
   Config ->
   IO (Maybe Report)
-fuzz' reifiedApi config = handle (pure . Just . formatException) $ do
+fuzz' reifiedApi config = handle (pure . Just . reportFromException) $ do
   withMVar databaseLock $ \_ -> do
     runOpts <- configureRunOptions config
-    runProperty runOpts (property (runFuzzProperty reifiedApi config))
+    runProperty runOpts (fuzzProperty reifiedApi config)
   pure Nothing
-  where
-    -- something less terrible later
-    formatException :: RoboservantException -> Report
-    formatException r@(RoboservantException failureType exception state) =
-      let headerLines =
-            ["failure: " <> show failureType]
-              ++ maybe [] (\e -> ["exception: " <> show e]) exception
-          traceLines =
-            concatMap (map T.unpack . callSummaryLines . ctSummary) (trace state)
-          allLines =
-            headerLines
-              ++ (if null traceLines then [] else "" : traceLines)
-       in Report (unlines allLines) r
+
+fuzzProperty ::
+  ReifiedApi ->
+  Config ->
+  Property
+fuzzProperty reifiedApi config =
+  withRunOptions (applyConfigOptions config) (property (runFuzzProperty reifiedApi config))
+
+runFuzzTestCase ::
+  ReifiedApi ->
+  Config ->
+  TestCase ->
+  IO (Maybe Report)
+runFuzzTestCase reifiedApi config testCase = do
+  result <- try (runFuzzProperty reifiedApi config testCase)
+  case result of
+    Left err -> pure (Just (reportFromException err))
+    Right () -> pure Nothing
+
+reportFromException :: RoboservantException -> Report
+reportFromException r@(RoboservantException failureType exception state) =
+  let headerLines =
+        ["failure: " <> show failureType]
+          ++ maybe [] (\e -> ["exception: " <> show e]) exception
+      traceLines =
+        concatMap (map T.unpack . callSummaryLines . ctSummary) (trace state)
+      allLines =
+        headerLines
+          ++ (if null traceLines then [] else "" : traceLines)
+   in Report (unlines allLines) r
 
 configureRunOptions :: Config -> IO RunOptions
 configureRunOptions cfg = do
@@ -379,6 +401,15 @@ configureRunOptions cfg = do
         runDatabase = Just db,
         runDatabaseKey = "roboservant"
       }
+
+applyConfigOptions :: Config -> RunOptions -> RunOptions
+applyConfigOptions cfg opts =
+  opts
+    { runMaxExamples = max 1 (min (maxRepsInt cfg) 64),
+      runQuiet = True,
+      runSeed = Just (rngSeed cfg),
+      runPrinter = logInfo cfg
+    }
 
 runFuzzProperty :: ReifiedApi -> Config -> TestCase -> IO ()
 runFuzzProperty reifiedApi cfg testCase = do
