@@ -117,6 +117,7 @@ instance
     (0, ReifiedEndpoint
         { reArguments    = reifiedEndpointArguments @endpoint
         , reEndpointFunc = foo (normalize endpoint)
+        , reDoc = reifiedEndpointDoc @endpoint
         }
     )
     : (map . first) (+1)

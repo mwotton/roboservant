@@ -27,6 +27,31 @@ dictionary. This means that they are now available for the
 prerequisites of other calls, so as you proceed, more and more api
 calls become possible.
 
+### fuzzing with sydtest
+
+```haskell
+{-# LANGUAGE DataKinds #-}
+{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE TypeOperators #-}
+
+import qualified Roboservant as R
+import qualified Roboservant.Server as RS
+import Servant (Get, JSON, Proxy (..), (:>), Server)
+import Test.Syd
+
+type Api = "ping" :> Get '[JSON] Int
+
+server :: Server Api
+server = pure 42
+
+main :: IO ()
+main = sydTest $ do
+  describe "ping api" $
+    it "stays healthy under fuzzing" $ do
+      RS.fuzz @Api server R.defaultConfig {R.maxReps = 200}
+        >>= (`shouldBe` Nothing)
+```
+
 ### fuzzing remote servers
 
 You don't have to embed the server under test in-process. If you have
@@ -34,21 +59,77 @@ an instance running elsewhere that implements the same Servant API, you
 can point Roboservant at its base URL and let the fuzzer drive the
 endpoints:
 
-``` haskell
+```haskell
 import qualified Roboservant.Client as RC
 import qualified Roboservant as R
 import Servant.Client (parseBaseUrl)
+import Test.Syd
 
-checkRemote :: IO ()
-checkRemote = do
-  base <- either (fail . show) pure (parseBaseUrl "http://localhost:8080")
-  RC.fuzzBaseUrl @Api base R.defaultConfig >>= \case
-    Nothing -> putStrLn "remote server looks healthy"
-    Just report -> print report
+remoteSpec :: Spec
+remoteSpec =
+  it "accepts the happy-path flow" $ do
+    base <- either (fail . show) pure (parseBaseUrl "http://localhost:8080")
+    RC.fuzzBaseUrl @Api base R.defaultConfig >>= (`shouldBe` Nothing)
+
+main :: IO ()
+main = sydTest remoteSpec
 ```
 
 For quick scripts you can also pass the URL as a string and let
 Roboservant parse it for you with `fuzzUrl`.
+
+### checking trace-level invariants
+
+Roboservant can evaluate predicates over the entire sequence of calls
+by attaching `TraceCheck`s to the configuration. Use this to catch
+subtle behaviours (for example, a 401 emitted before authentication is
+complete):
+
+```haskell
+import Data.List (find)
+import qualified Data.Text as T
+import qualified Roboservant as R
+import qualified Roboservant.Server as RS
+
+noUnauthorized :: [R.CallTrace] -> Maybe String
+noUnauthorized calls =
+  case find isUnauthorized calls of
+    Nothing -> Nothing
+    Just _ -> Just "encountered 401 before authorization"
+  where
+    isUnauthorized R.CallTrace {R.ctResult = R.TraceError err} =
+      (not . R.fatalError) err && "401" `T.isInfixOf` R.errorMessage err
+    isUnauthorized _ = False
+
+let config =
+      R.defaultConfig
+        { R.traceChecks =
+            [ R.TraceCheck
+                { R.traceCheckName = "no unauthorized",
+                  R.traceCheck = noUnauthorized
+                }
+            ]
+        }
+
+RS.fuzz @Api server config >>= (`shouldBe` Nothing)
+```
+
+### reading failure reports
+
+When a fuzz run fails, Roboservant prints the minimized HTTP trace that
+triggered the issue and stores it in `.minithesis-db` for later
+inspection. A failure now renders each call with its method, URL
+segments, query parameters, headers, and payloads. For example:
+
+```
+POST /checkout?id=42 -> ok
+  body: {"item":"widget","quantity":3}
+  response: {"orderId":"8b9f6e"}
+GET /fail/777 -> ERROR explosion (fatal)
+```
+
+The same trace is persisted in `.minithesis-db`, so you can replay or extend the
+reproducer later.
 
 We explicitly do not try to come up with plausible values that haven't
 somehow come back from the API. That's straying into QC/Hedgehog
@@ -119,23 +200,15 @@ these without context via Arbitrary.
 
 ## limitations and future work
 
-Currently, the display of failing traces is pretty tragic, both in the
-formatting and in its non-minimality. This is pretty ticklish:
-arguably the right way to do this is to return a trace that we can
-also rerun, and let quickcheck or hedgehog a level up shrink it until
-it's satisfactorily short. In the interest of being useful earlier
-rather than later, I'm releasing v1.0 before I crack this particular
-nut. We do know which calls we made that led to the failing case, so
-we would want to show that distinction in a visible way: it's possible
-that other calls that don't have direct data dependencies were
-important, but we definitely know we need the direct data dependencies.
+Failure traces now contain the exact operations that ran (including
+URLs, query parameters, headers, bodies, and responses) and can be
+checked with `TraceCheck`s. Minithesis shrinks and persists the
+smallest failing sequence in `.minithesis-db` for later inspection.
 
-The provenance stuff is a bit underbaked. It should at least pull a
-representation of the route chosen rather than just an integer index.
+Support for recursive datatypes still requires hand-written
+`BuildFrom` instances to avoid infinite loops. Deriving those
+automatically (or rejecting problematic definitions earlier) remains
+on the roadmap.
 
-It would also be nice to have a robust strategy for deriving recursive
-datatypes, or at least rejecting attempts to generate them that don't
-end in an infinite loop.
-
-Currently the `FlattenServer` instance for `:>` is quadratic. It would
-be nice to fix this but I lack the art.
+Finally, the `FlattenServer` instance for `:>` is still quadratic. A
+more efficient representation would make large APIs cheaper to fuzz.

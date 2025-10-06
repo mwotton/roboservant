@@ -2,3 +2,4 @@ dist-newstyle/
 .stack-work/
 .hie/
 *~
+.minithesis-db
