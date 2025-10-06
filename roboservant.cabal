@@ -150,6 +150,7 @@ test-suite roboservant-test
     , servant-client >=0.18 && <0.21
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
+    , silently >=0.3 && <1.3
     , string-conversions ==0.4.*
     , sydtest >=0.15 && <0.22
     , text >=1.2 && <2.2
