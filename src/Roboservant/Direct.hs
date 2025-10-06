@@ -27,6 +27,7 @@ module Roboservant.Direct
   )
 where
 
+import Control.Concurrent.MVar (MVar, newMVar, withMVar)
 import Control.Exception.Lifted
   ( Exception,
     Handler (Handler),
@@ -40,6 +41,7 @@ import Control.Exception.Lifted
   )
 import qualified Control.Exception as Exception
 import Control.Applicative (asum, (<|>))
+import Control.Monad (when)
 import Control.Monad.State.Strict
   ( MonadIO (..),
     MonadState (get),
@@ -62,7 +64,6 @@ import qualified Data.Set as Set
 import qualified Data.Vinyl as V
 import qualified Data.Vinyl.Curry as V
 import qualified Data.Vinyl.Functor as V
-import Data.IORef (IORef, atomicModifyIORef', newIORef)
 import qualified Type.Reflection as R
 import qualified Data.Aeson as Aeson
 import qualified Data.ByteString as BS
@@ -88,9 +89,13 @@ import Roboservant.Types
   )
 import Roboservant.Types.Config
 
-import System.Directory (createDirectoryIfMissing)
+import System.Directory
+  ( createDirectoryIfMissing,
+    doesDirectoryExist,
+    removeDirectoryRecursive
+  )
 import System.Environment (lookupEnv)
-import System.FilePath ((</>))
+import System.FilePath (takeDirectory)
 import System.IO.Unsafe (unsafePerformIO)
 
 import Minithesis
@@ -156,13 +161,9 @@ data EndpointOption
       }
 
 
-databaseCounter :: IORef Int
-databaseCounter = unsafePerformIO (newIORef 0)
-{-# NOINLINE databaseCounter #-}
-
-nextDatabaseSuffix :: IO Int
-nextDatabaseSuffix = atomicModifyIORef' databaseCounter $ \n ->
-  let next = n + 1 in (next, next)
+databaseLock :: MVar ()
+databaseLock = unsafePerformIO (newMVar ())
+{-# NOINLINE databaseLock #-}
 
 
 selectedDynamic :: SelectedArg a -> Dynamic
@@ -340,8 +341,9 @@ fuzz' ::
   Config ->
   IO (Maybe Report)
 fuzz' reifiedApi config = handle (pure . Just . formatException) $ do
-  runOpts <- configureRunOptions config
-  runProperty runOpts (property (runFuzzProperty reifiedApi config))
+  withMVar databaseLock $ \_ -> do
+    runOpts <- configureRunOptions config
+    runProperty runOpts (property (runFuzzProperty reifiedApi config))
   pure Nothing
   where
     -- something less terrible later
@@ -360,16 +362,14 @@ fuzz' reifiedApi config = handle (pure . Just . formatException) $ do
 configureRunOptions :: Config -> IO RunOptions
 configureRunOptions cfg = do
   let maxExamples = max 1 (min (maxRepsInt cfg) 64)
-  suffix <- nextDatabaseSuffix
-  let relativeRoot = ".minithesis-db"
-      relativeDbBase = relativeRoot </> "roboservant-runs"
-      relativeDb = relativeDbBase </> show suffix
+      relativeDb = ".minithesis-db"
   baseOverride <- lookupEnv "MINITHESIS_DB"
-  let ensureAll dirs = mapM_ (createDirectoryIfMissing True) dirs
-      baseRoot = fromMaybe ".minithesis-hs-db" baseOverride
-  ensureAll [relativeRoot, relativeDbBase]
-  ensureAll [baseRoot, baseRoot </> relativeRoot, baseRoot </> relativeDbBase]
-  db <- scopedDatabase relativeDb
+  let dbPath = maybe relativeDb id baseOverride
+  existsAsDir <- doesDirectoryExist dbPath
+  when existsAsDir $ removeDirectoryRecursive dbPath
+  let parentDir = takeDirectory dbPath
+  when (parentDir /= dbPath) $ createDirectoryIfMissing True parentDir
+  db <- scopedDatabase dbPath
   resolveRunOptionsWith $ \opts ->
     opts
       { runMaxExamples = maxExamples,
@@ -377,7 +377,7 @@ configureRunOptions cfg = do
         runSeed = Just (rngSeed cfg),
         runPrinter = logInfo cfg,
         runDatabase = Just db,
-        runDatabaseKey = "roboservant-" <> show suffix
+        runDatabaseKey = "roboservant"
       }
 
 runFuzzProperty :: ReifiedApi -> Config -> TestCase -> IO ()

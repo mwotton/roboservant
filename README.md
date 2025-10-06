@@ -117,8 +117,8 @@ RS.fuzz @Api server config >>= (`shouldBe` Nothing)
 ### reading failure reports
 
 When a fuzz run fails, Roboservant prints the minimized HTTP trace that
-triggered the issue and stores it under `.minithesis-db/roboservant-runs/<run-id>`
-for later inspection. A failure now renders each call with its method, URL
+triggered the issue and stores it in `.minithesis-db` for later
+inspection. A failure now renders each call with its method, URL
 segments, query parameters, headers, and payloads. For example:
 
 ```
@@ -128,8 +128,8 @@ POST /checkout?id=42 -> ok
 GET /fail/777 -> ERROR explosion (fatal)
 ```
 
-The same trace is persisted under `.minithesis-db/roboservant-runs/<run-id>`,
-so you can replay or extend the reproducer later.
+The same trace is persisted in `.minithesis-db`, so you can replay or extend the
+reproducer later.
 
 We explicitly do not try to come up with plausible values that haven't
 somehow come back from the API. That's straying into QC/Hedgehog
@@ -203,8 +203,7 @@ these without context via Arbitrary.
 Failure traces now contain the exact operations that ran (including
 URLs, query parameters, headers, bodies, and responses) and can be
 checked with `TraceCheck`s. Minithesis shrinks and persists the
-smallest failing sequence in `.minithesis-db/roboservant-runs/<run-id>`
-for later inspection.
+smallest failing sequence in `.minithesis-db` for later inspection.
 
 Support for recursive datatypes still requires hand-written
 `BuildFrom` instances to avoid infinite loops. Deriving those
