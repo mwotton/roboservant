@@ -46,6 +46,8 @@ import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client       (Manager, defaultManagerSettings, managerResponseTimeout, newManager, responseTimeoutMicro)
 import qualified Network.Socket as Socket
 import qualified Type.Reflection as TR
+import System.IO (stdout, stderr)
+import System.IO.Silently (hCapture)
 
 newTestManager :: IO Manager
 newTestManager = newManager defaultManagerSettings { managerResponseTimeout = responseTimeoutMicro 1000000 }
@@ -60,7 +62,11 @@ fuzzBoth
   => String -> Server a -> R.Config -> (Maybe R.Report -> IO ()) -> Spec
 fuzzBoth name server config condition = do
   it (name <> " via server") $
-    RS.fuzz @a server config >>= condition
+    do
+      (logs, report) <-
+        hCapture [stdout, stderr] $ RS.fuzz @a server config
+      context ("captured server logs:\n" <> logs) $
+        condition report
 
   around (withServer (serve (Proxy :: Proxy a) server)) $
     it (name <> " via client") $ \(clientEnv::ClientEnv) -> do
