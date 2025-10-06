@@ -39,6 +39,9 @@ jobs:
           path: |
             ~/.cabal
           key: ${{ runner.os }}-${{ matrix.versions.ghc }}-${{ matrix.versions.cabal }}-cabal-global-${{ hashFiles('cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.versions.ghc }}-${{ matrix.versions.cabal }}-cabal-global-
+            ${{ runner.os }}-${{ matrix.versions.ghc }}-${{ matrix.versions.cabal }}-
 
       - name: Cache cabal build
         id: cabal-local
