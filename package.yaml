@@ -26,6 +26,10 @@ dependencies:
 - monad-control >= 1.0 && < 1.1
 - mtl >= 2.2 && < 2.4
 - minithesis >= 0.1 && < 0.2
+- aeson >= 1.5 && < 2.3
+- scientific >= 0.3 && < 0.4
+- base64-bytestring >= 1.0 && < 1.3
+- directory >= 1.3 && < 1.4
 - servant >= 0.18 && < 0.21
 - servant-client >= 0.18 && < 0.21
 - servant-flatten >= 0.2 && < 0.3
@@ -34,6 +38,7 @@ dependencies:
 - vinyl >= 0.13 && < 0.15
 - dependent-sum >= 0.7 && < 0.8
 - dependent-map >= 0.4 && < 0.5
+- filepath >= 1.4 && < 1.6
 - unordered-containers >= 0.2.10 && < 0.3
 - text >= 1.2 && < 2.2
 - time >= 1.9 && < 1.16

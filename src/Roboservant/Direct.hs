@@ -2,6 +2,9 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE GADTs #-}
 {-# LANGUAGE LambdaCase #-}
+{-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE PatternSynonyms #-}
+{-# LANGUAGE TypeApplications #-}
 {-# LANGUAGE PolyKinds #-}
 {-# LANGUAGE RankNTypes #-}
 {-# LANGUAGE RecordWildCards #-}
@@ -33,7 +36,10 @@ import Control.Exception.Lifted
     catches,
     handle,
     throw,
+    try,
   )
+import qualified Control.Exception as Exception
+import Control.Applicative (asum, (<|>))
 import Control.Monad.State.Strict
   ( MonadIO (..),
     MonadState (get),
@@ -42,28 +48,50 @@ import Control.Monad.State.Strict
     modify',
   )
 import qualified Data.Dependent.Map as DM
-import Data.Dynamic (Dynamic (..))
+import Data.Dynamic (Dynamic (..), dynTypeRep, fromDynamic, toDyn)
 import qualified Data.IntSet as IntSet
+import qualified Data.Foldable as F
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NEL
-import Data.Maybe (listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.Scientific (Scientific)
+import Data.Text (Text)
+import qualified Data.Text as T
+import qualified Data.Text.Encoding as TE
 import qualified Data.Set as Set
 import qualified Data.Vinyl as V
 import qualified Data.Vinyl.Curry as V
 import qualified Data.Vinyl.Functor as V
+import Data.IORef (IORef, atomicModifyIORef', newIORef)
+import qualified Type.Reflection as R
+import qualified Data.Aeson as Aeson
+import qualified Data.ByteString as BS
+import qualified Data.ByteString.Base64 as B64
+import qualified Data.ByteString.Lazy as BL
 import GHC.Generics ((:*:) (..))
 import Roboservant.Types
   ( ApiOffset (..),
     Argument (..),
-    InteractionError(..),
+    ArgIndex (..),
+    BodyPiece (..),
+    EndpointDoc (..),
+    HeaderPiece (..),
+    InteractionError (..),
+    PathPiece (..),
     Provenance (..),
     ReifiedApi,
     ReifiedEndpoint (..),
+    QueryPiece (..),
     Stash (..),
     StashValue (..),
     TypedF,
   )
 import Roboservant.Types.Config
+
+import System.Directory (createDirectoryIfMissing)
+import System.Environment (lookupEnv)
+import System.FilePath ((</>))
+import System.IO.Unsafe (unsafePerformIO)
 
 import Minithesis
   ( RunOptions (..),
@@ -72,8 +100,8 @@ import Minithesis
     property,
     resolveRunOptionsWith,
     runProperty,
+    scopedDatabase,
   )
-import qualified Type.Reflection as R
 
 data RoboservantException
   = RoboservantException
@@ -123,8 +151,170 @@ data EndpointOption
     (V.RecordToList as, V.RMap as) =>
     EndpointOption
       { eoCall :: V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic, Int)))),
-        eoArgs :: V.Rec (TypedF StashValue) as
+        eoArgs :: V.Rec (TypedF StashValue) as,
+        eoDescribe :: V.Rec SelectedArg as -> CallSummary
       }
+
+
+databaseCounter :: IORef Int
+databaseCounter = unsafePerformIO (newIORef 0)
+{-# NOINLINE databaseCounter #-}
+
+nextDatabaseSuffix :: IO Int
+nextDatabaseSuffix = atomicModifyIORef' databaseCounter $ \n ->
+  let next = n + 1 in (next, next)
+
+
+selectedDynamic :: SelectedArg a -> Dynamic
+selectedDynamic (SelectedArg _ (tr :*: V.Identity val)) =
+  R.withTypeable tr (toDyn val)
+
+argDynamicAt :: Int -> V.Rec SelectedArg as -> Maybe Dynamic
+argDynamicAt _ V.RNil = Nothing
+argDynamicAt 0 (sel V.:& _) = Just (selectedDynamic sel)
+argDynamicAt n (_ V.:& rest) = argDynamicAt (n - 1) rest
+
+boolText :: Bool -> Text
+boolText True = "true"
+boolText False = "false"
+
+renderDynamicText :: Dynamic -> Text
+renderDynamicText dyn =
+  fromMaybe fallback (asum renderers)
+  where
+    fallback = "<" <> T.pack (show (dynTypeRep dyn)) <> ">"
+    renderers =
+      [ T.pack <$> (fromDynamic dyn :: Maybe String)
+      , fromDynamic dyn :: Maybe Text
+      , T.pack . show <$> (fromDynamic dyn :: Maybe Int)
+      , T.pack . show <$> (fromDynamic dyn :: Maybe Integer)
+      , T.pack . show <$> (fromDynamic dyn :: Maybe Double)
+      , T.pack . show <$> (fromDynamic dyn :: Maybe Scientific)
+      , boolText <$> (fromDynamic dyn :: Maybe Bool)
+      , renderMaybeWith id (fromDynamic dyn :: Maybe (Maybe Text))
+      , renderMaybeWith T.pack (fromDynamic dyn :: Maybe (Maybe String))
+      , renderMaybeWith (T.pack . show) (fromDynamic dyn :: Maybe (Maybe Int))
+      , renderMaybeWith boolText (fromDynamic dyn :: Maybe (Maybe Bool))
+      , renderListWith id (fromDynamic dyn :: Maybe [Text])
+      , renderListWith T.pack (fromDynamic dyn :: Maybe [String])
+      , renderListWith (T.pack . show) (fromDynamic dyn :: Maybe [Int])
+      , renderListWith (T.pack . show) (fromDynamic dyn :: Maybe [Integer])
+      , renderListWith (T.pack . show) (fromDynamic dyn :: Maybe [Double])
+      , renderListWith boolText (fromDynamic dyn :: Maybe [Bool])
+      , renderListWith id (fmap NEL.toList (fromDynamic dyn :: Maybe (NEL.NonEmpty Text)))
+      , renderListWith T.pack (fmap NEL.toList (fromDynamic dyn :: Maybe (NEL.NonEmpty String)))
+      , renderListWith (T.pack . show) (fmap NEL.toList (fromDynamic dyn :: Maybe (NEL.NonEmpty Int)))
+      , renderListWith boolText (fmap NEL.toList (fromDynamic dyn :: Maybe (NEL.NonEmpty Bool)))
+      , decodeJSON <$> (fromDynamic dyn :: Maybe Aeson.Value)
+      , decodeBytes <$> (fromDynamic dyn :: Maybe BS.ByteString)
+      ]
+    renderMaybeWith :: (a -> Text) -> Maybe (Maybe a) -> Maybe Text
+    renderMaybeWith f mm = case mm of
+      Nothing -> Nothing
+      Just Nothing -> Just "Nothing"
+      Just (Just x) -> Just ("Just " <> f x)
+    renderListWith :: (a -> Text) -> Maybe [a] -> Maybe Text
+    renderListWith f = fmap (\xs -> "[" <> T.intercalate ", " (map f xs) <> "]")
+    decodeJSON value = TE.decodeUtf8 (BL.toStrict (Aeson.encode value))
+    decodeBytes bs = TE.decodeUtf8 (B64.encode bs)
+
+listValueTexts :: Dynamic -> Maybe [Text]
+listValueTexts dyn =
+  asum
+    [ fromDynamic dyn :: Maybe [Text]
+    , fmap (map T.pack) (fromDynamic dyn :: Maybe [String])
+    , fmap (map (T.pack . show)) (fromDynamic dyn :: Maybe [Int])
+    , fmap (map (T.pack . show)) (fromDynamic dyn :: Maybe [Integer])
+    , fmap (map (T.pack . show)) (fromDynamic dyn :: Maybe [Double])
+    , fmap (map boolText) (fromDynamic dyn :: Maybe [Bool])
+    , fmap (map id . NEL.toList) (fromDynamic dyn :: Maybe (NEL.NonEmpty Text))
+    , fmap (map T.pack . NEL.toList) (fromDynamic dyn :: Maybe (NEL.NonEmpty String))
+    , fmap (map (T.pack . show) . NEL.toList) (fromDynamic dyn :: Maybe (NEL.NonEmpty Int))
+    , fmap (map boolText . NEL.toList) (fromDynamic dyn :: Maybe (NEL.NonEmpty Bool))
+    ]
+
+maybeValueTexts :: Dynamic -> Maybe [Text]
+maybeValueTexts dyn =
+  asum
+    [ toTexts (fromDynamic dyn :: Maybe (Maybe Text)) id
+    , toTexts (fromDynamic dyn :: Maybe (Maybe String)) T.pack
+    , toTexts (fromDynamic dyn :: Maybe (Maybe Int)) (T.pack . show)
+    , toTexts (fromDynamic dyn :: Maybe (Maybe Integer)) (T.pack . show)
+    , toTexts (fromDynamic dyn :: Maybe (Maybe Double)) (T.pack . show)
+    , toTexts (fromDynamic dyn :: Maybe (Maybe Bool)) boolText
+    ]
+  where
+    toTexts :: Maybe (Maybe a) -> (a -> Text) -> Maybe [Text]
+    toTexts mm f = case mm of
+      Nothing -> Nothing
+      Just Nothing -> Just []
+      Just (Just x) -> Just [f x]
+
+maybeBoolValue :: Dynamic -> Maybe Bool
+maybeBoolValue dyn =
+  (fromDynamic dyn :: Maybe Bool)
+    <|> do
+      mb <- fromDynamic dyn :: Maybe (Maybe Bool)
+      pure (fromMaybe False mb)
+
+valueTextsForQueryParam :: Dynamic -> [Text]
+valueTextsForQueryParam dyn =
+  fromMaybe [renderDynamicText dyn] (maybeValueTexts dyn)
+
+valueTextsForQueryParams :: Dynamic -> [Text]
+valueTextsForQueryParams dyn =
+  fromMaybe [renderDynamicText dyn] (listValueTexts dyn)
+
+describeEndpointDoc :: EndpointDoc as -> V.Rec SelectedArg as -> CallSummary
+describeEndpointDoc EndpointDoc {..} selected =
+  let initial = emptySummary docMethod
+      withPath = F.foldl' (applyPath selected) initial docPathPieces
+      withQuery = F.foldl' (applyQuery selected) withPath docQueryPieces
+      withHeaders = F.foldl' (applyHeader selected) withQuery docHeaderPieces
+   in maybe withHeaders (applyBody selected withHeaders) docBodyPiece
+  where
+    applyPath rec summary piece = case piece of
+      StaticPiece seg -> appendPathSegment seg summary
+      CapturePiece label (ArgIndex idx) ->
+        case argDynamicAt idx rec of
+          Just dyn ->
+            let value = renderDynamicText dyn
+                summary' = appendPathSegment value summary
+             in maybe summary' (\lbl -> appendNote (lbl <> "=" <> value) summary') label
+          Nothing -> appendPathSegment "<missing>" summary
+
+    applyQuery rec summary piece = case piece of
+      QueryParamPiece name (ArgIndex idx) ->
+        case argDynamicAt idx rec of
+          Just dyn -> F.foldl' (\acc v -> appendQueryItem name v acc) summary (valueTextsForQueryParam dyn)
+          Nothing -> summary
+      QueryParamsPiece name (ArgIndex idx) ->
+        case argDynamicAt idx rec of
+          Just dyn -> F.foldl' (\acc v -> appendQueryItem name v acc) summary (valueTextsForQueryParams dyn)
+          Nothing -> summary
+      QueryFlagPiece name (ArgIndex idx) ->
+        case argDynamicAt idx rec >>= maybeBoolValue of
+          Just True -> appendQueryItem name "true" summary
+          Just False -> summary
+          Nothing -> summary
+
+    applyHeader rec summary (HeaderPiece name (ArgIndex idx)) =
+      case argDynamicAt idx rec of
+        Just dyn -> appendHeaderItem name (renderDynamicText dyn) summary
+        Nothing -> summary
+
+    applyBody rec summary (BodyPiece (ArgIndex idx)) =
+      case argDynamicAt idx rec of
+        Just dyn -> appendBodyChunk (renderDynamicText dyn) summary
+        Nothing -> summary
+
+applyOutcome :: CallSummary -> Either InteractionError (NonEmpty (Dynamic, Int)) -> CallSummary
+applyOutcome summary result =
+  case result of
+    Left err -> setOutcome (CallFailed err) summary
+    Right dyns ->
+      let values = map (renderDynamicText . fst) (NEL.toList dyns)
+       in setOutcome (CallSucceeded values) summary
 
 data StopReason
   = TimedOut
@@ -156,22 +346,38 @@ fuzz' reifiedApi config = handle (pure . Just . formatException) $ do
   where
     -- something less terrible later
     formatException :: RoboservantException -> Report
-    formatException r@(RoboservantException failureType exception _state) =
-      Report
-        (unlines [show failureType, show exception])
-        r
+    formatException r@(RoboservantException failureType exception state) =
+      let headerLines =
+            ["failure: " <> show failureType]
+              ++ maybe [] (\e -> ["exception: " <> show e]) exception
+          traceLines =
+            concatMap (map T.unpack . callSummaryLines . ctSummary) (trace state)
+          allLines =
+            headerLines
+              ++ (if null traceLines then [] else "" : traceLines)
+       in Report (unlines allLines) r
 
 configureRunOptions :: Config -> IO RunOptions
 configureRunOptions cfg = do
   let maxExamples = max 1 (min (maxRepsInt cfg) 64)
+  suffix <- nextDatabaseSuffix
+  let relativeRoot = ".minithesis-db"
+      relativeDbBase = relativeRoot </> "roboservant-runs"
+      relativeDb = relativeDbBase </> show suffix
+  baseOverride <- lookupEnv "MINITHESIS_DB"
+  let ensureAll dirs = mapM_ (createDirectoryIfMissing True) dirs
+      baseRoot = fromMaybe ".minithesis-hs-db" baseOverride
+  ensureAll [relativeRoot, relativeDbBase]
+  ensureAll [baseRoot, baseRoot </> relativeRoot, baseRoot </> relativeDbBase]
+  db <- scopedDatabase relativeDb
   resolveRunOptionsWith $ \opts ->
     opts
       { runMaxExamples = maxExamples,
         runQuiet = True,
         runSeed = Just (rngSeed cfg),
         runPrinter = logInfo cfg,
-        runDatabase = Nothing,
-        runDatabaseKey = "roboservant"
+        runDatabase = Just db,
+        runDatabaseKey = "roboservant-" <> show suffix
       }
 
 runFuzzProperty :: ReifiedApi -> Config -> TestCase -> IO ()
@@ -226,18 +432,31 @@ performCall env offset EndpointOption {..} = do
   selected <- V.rtraverse (selectArgument env) eoArgs
   let pathSegment = mkPathSegment offset selected
   modify' $ \fs -> fs {path = path fs <> [pathSegment]}
-  result <- executeWithHandlers env pathSegment eoCall selected
-  recordTrace pathSegment selected result
-  runTraceChecks env
-  runHealthCheck env
+  outcome <- try (executeWithHandlers env pathSegment eoCall selected)
+  case outcome of
+    Right result -> do
+      let summary = applyOutcome (eoDescribe selected) result
+      recordTrace pathSegment selected result summary
+      runTraceChecks env
+      runHealthCheck env
+    Left ex@(RoboservantException {failureReason = ServerCrashed, serverException = Just some}) ->
+      case Exception.fromException some of
+        Just interactionErr -> do
+          let summary = applyOutcome (eoDescribe selected) (Left interactionErr)
+          recordTrace pathSegment selected (Left interactionErr) summary
+          updatedState <- get
+          throw ex {fuzzState = updatedState}
+        Nothing -> throw ex
+    Left ex -> throw ex
 
 recordTrace ::
   (V.RecordToList as, V.RMap as) =>
   FuzzOp ->
   V.Rec SelectedArg as ->
   Either InteractionError (NonEmpty (Dynamic, Int)) ->
+  CallSummary ->
   StateT FuzzState IO ()
-recordTrace fuzzOp selected result =
+recordTrace fuzzOp selected result summary =
   modify'
     (\fs ->
         fs
@@ -247,16 +466,15 @@ recordTrace fuzzOp selected result =
                        { ctOffset = apiOffset fuzzOp,
                          ctProvenance = provenance fuzzOp,
                          ctArguments = selectedArguments selected,
-                         ctResult = toTraceResult result
+                         ctResult = toTraceResult result,
+                         ctSummary = summary
                        }
                    ]
           }
     )
   where
     selectedArguments :: (V.RecordToList as, V.RMap as) => V.Rec SelectedArg as -> [Dynamic]
-    selectedArguments =
-      recordToList'
-        (\(SelectedArg _ (tr :*: V.Identity val)) -> Dynamic tr val)
+    selectedArguments = recordToList' (\sel -> selectedDynamic sel)
 
     toTraceResult :: Either InteractionError (NonEmpty (Dynamic, Int)) -> TraceResult
     toTraceResult = \case
@@ -376,7 +594,8 @@ availableOptions FuzzEnv {..} FuzzState {..} =
   mapMaybe
     ( \(offset, ReifiedEndpoint {..}) -> do
         args <- V.rtraverse (\(tr :*: Argument bf) -> (tr :*:) <$> bf stash) reArguments
-        pure (offset, EndpointOption reEndpointFunc args)
+        let describe = describeEndpointDoc reDoc
+        pure (offset, EndpointOption reEndpointFunc args describe)
     )
     feApi
 

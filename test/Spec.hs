@@ -1,6 +1,7 @@
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE LambdaCase #-}
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE NamedFieldPuns #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE TypeApplications #-}
@@ -19,7 +20,7 @@ import Data.Hashable (Hashable (hash))
 import qualified Data.IntSet as IntSet
 import Data.List (find)
 import qualified Data.List.NonEmpty as NEL
-import Data.Maybe (isNothing)
+import Data.Maybe (isJust, isNothing)
 import qualified Data.Text as T
 import Data.Void (Void)
 import qualified Foo
@@ -36,6 +37,7 @@ import qualified Roboservant as R
 import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
 import qualified Seeded
+import qualified SummaryExample
 import Test.Syd
 import qualified Valid
 import Servant ( Server, Proxy(..), serve, Endpoints, HasServer )
@@ -48,6 +50,7 @@ import qualified Network.Socket as Socket
 import qualified Type.Reflection as TR
 import System.IO (stdout, stderr)
 import System.IO.Silently (hCapture)
+import Text.Read (readMaybe)
 
 newTestManager :: IO Manager
 newTestManager = newManager defaultManagerSettings { managerResponseTimeout = responseTimeoutMicro 1000000 }
@@ -191,6 +194,82 @@ spec = do
           failureReason `shouldBe` R.ServerCrashed
           let callCount = length (R.path fuzzState)
           callCount `shouldBe` 2
+
+    it "captures call summaries for reporting" $ do
+      let config =
+            R.defaultConfig
+              { R.rngSeed = 2024,
+                R.maxRuntime = 0.05,
+                R.maxReps = 200
+              }
+      report <- RS.fuzz @MinithesisExample.Api MinithesisExample.server config
+      case report of
+        Nothing -> expectationFailure "expected a failure report"
+        Just R.Report {rsException = R.RoboservantException {fuzzState = state}} -> do
+          let traces = R.trace state
+          length traces `shouldBe` 2
+          let lastSummary = R.ctSummary (last traces)
+          R.csMethod lastSummary `shouldBe` "GET"
+          R.csPathSegments lastSummary `shouldBe` ["fail", "<Secret>"]
+          case R.csOutcome lastSummary of
+            R.CallFailed err -> R.errorMessage err `shouldSatisfy` ("explosion" `T.isInfixOf`)
+            outcome -> expectationFailure $ "expected CallFailed, saw: " <> show outcome
+
+  describe "Call summaries" $ do
+    it "includes path, query parameters, body, and response" $ do
+      let config =
+            R.defaultConfig
+              { R.seed =
+                  [ R.hashedDyn (123 :: Int),
+                    R.hashedDyn (456 :: Int)
+                  ],
+                R.traceChecks =
+                  [ R.TraceCheck
+                      { R.traceCheckName = "stop after first call",
+                        R.traceCheck = \calls ->
+                          if null calls then Nothing else Just "done"
+                      }
+                  ],
+                R.maxReps = 1,
+                R.maxRuntime = 0.01,
+                R.rngSeed = 0
+              }
+      report <- RS.fuzz @SummaryExample.Api SummaryExample.server config
+      case report of
+        Nothing -> expectationFailure "expected a trace check failure"
+        Just R.Report {rsException = R.RoboservantException {failureReason, fuzzState}} -> do
+          failureReason `shouldBe` R.TraceCheckFailed "stop after first call" "done"
+          case R.trace fuzzState of
+            [call] -> do
+              let summary = R.ctSummary call
+              R.csMethod summary `shouldBe` "POST"
+              R.csPathSegments summary `shouldBe` ["summary"]
+              case R.csQueryItems summary of
+                [(key, value)] -> do
+                  key `shouldBe` "id"
+                  (readMaybe (T.unpack value) :: Maybe Int) `shouldSatisfy` isJust
+                items -> expectationFailure $ "expected single query item, saw " <> show items
+              case R.csBody summary of
+                [bodyChunk] ->
+                  (readMaybe (T.unpack bodyChunk) :: Maybe Int) `shouldSatisfy` isJust
+                chunks -> expectationFailure $ "expected single body chunk, saw " <> show chunks
+              case R.csOutcome summary of
+                R.CallSucceeded responses -> do
+                  responses `shouldNotBe` []
+                  mapM_
+                    (\responseText ->
+                        (readMaybe (T.unpack responseText) :: Maybe Int) `shouldSatisfy` isJust
+                    )
+                    responses
+                outcome -> expectationFailure $ "expected CallSucceeded, saw " <> show outcome
+              let rendered = R.callSummaryLines summary
+              case rendered of
+                firstLine : rest -> do
+                  T.isPrefixOf "POST /summary" firstLine `shouldBe` True
+                  T.isInfixOf "?id=" firstLine `shouldBe` True
+                  (firstLine : rest) `shouldSatisfy` \ls -> any (T.isPrefixOf "  body: ") ls
+                [] -> expectationFailure "expected rendered summary lines"
+            calls -> expectationFailure $ "expected exactly one trace entry, saw " <> show (length calls)
 
   describe "Remote fuzzing" $ do
     it "fuzzes a server via BaseUrl" $ do

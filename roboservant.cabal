@@ -50,6 +50,7 @@ library
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
+    , aeson >=1.5 && <2.3
     , http-client >=0.5 && <0.8
     , http-types ==0.12.*
     , lifted-base ==0.2.*
@@ -57,10 +58,14 @@ library
     , monad-control ==1.0.*
     , mtl >=2.2 && <2.4
     , random >=1.2 && <1.4
+    , directory >=1.3 && <1.4
     , servant >=0.18 && <0.21
     , servant-client >=0.18 && <0.21
     , servant-flatten ==0.2.*
     , servant-server >=0.18 && <0.21
+    , scientific >=0.3 && <0.4
+    , base64-bytestring >=1.0 && <1.3
+    , filepath >=1.4 && <1.6
     , string-conversions ==0.4.*
     , text >=1.2 && <2.2
     , time >=1.9 && <1.16
@@ -123,6 +128,7 @@ test-suite roboservant-test
       QueryParams
       Records
       Seeded
+      SummaryExample
       UnsafeIO
       Valid
       Paths_roboservant
