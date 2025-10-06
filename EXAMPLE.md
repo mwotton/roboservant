@@ -10,11 +10,12 @@ Our api under test:
 {-# LANGUAGE StandaloneDeriving #-}
 {-# LANGUAGE DerivingVia #-}
 {-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE TypeApplications #-}
+{-# LANGUAGE FlexibleContexts #-}
 
 import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
@@ -25,12 +26,12 @@ import Test.Syd
 import Servant
 import Servant.API.Generic 
 import Servant.Server.Generic (AsServer)
-import GHC.Generics
 import Data.Typeable
 import Data.Hashable
 import Data.Maybe(isNothing, isJust)
 import qualified Network.Wai.Handler.Warp as Warp
 import Data.Aeson(FromJSON,ToJSON)
+import qualified Data.ByteString.Lazy.Char8 as BL
 
 newtype A = A Int
   deriving (Generic, Eq, Show, Typeable)
@@ -56,7 +57,7 @@ server introduce = introduce :<|> combine :<|> eliminate
   where
     combine (B i) (B j) = pure $ B (i + j)
     eliminate (B i)
-      | i > 10 = error "give up, eleven is way too big and probably not even real"
+      | i > 10 = throwError err500 { errBody = BL.pack "give up, eleven is way too big and probably not even real" }
       | otherwise = pure ()
 ```
 
@@ -162,6 +163,13 @@ recordSpec =
     it "fuzzes a NamedRoutes server" $
       RS.fuzz @RecordApi recordServer config
         >>= (`shouldSatisfy` isNothing)
+
+_recordApiDocExamples :: ()
+_recordApiDocExamples =
+  let _ = recordServer
+      _ = recordSpec
+      _ = Proxy @RecordApi
+   in ()
 ```
 
 

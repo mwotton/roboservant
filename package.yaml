@@ -71,6 +71,10 @@ tests:
       - warp >= 3.3 && < 3.5
       - http-client >= 0.5 && < 0.8
       - aeson >= 1.5 && < 2.3
-    ghc-options:    -pgmL markdown-unlit
+    ghc-options:
+      - -pgmL markdown-unlit
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N
 
     build-tools:  markdown-unlit
