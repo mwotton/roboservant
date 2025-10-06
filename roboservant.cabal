@@ -50,6 +50,7 @@ library
     , dependent-map ==0.4.*
     , dependent-sum ==0.7.*
     , hashable >=1.4 && <1.6
+    , http-client >=0.5 && <0.8
     , http-types ==0.12.*
     , lifted-base ==0.2.*
     , minithesis ==0.1.*

@@ -192,6 +192,20 @@ spec = do
           let callCount = length (R.path fuzzState)
           callCount `shouldBe` 2
 
+  describe "Remote fuzzing" $ do
+    it "fuzzes a server via BaseUrl" $ do
+      Warp.testWithApplication (pure $ serve (Proxy @Valid.Api) Valid.server) $ \port -> do
+        baseUrl <- parseBaseUrl "http://127.0.0.1"
+        let remoteUrl = baseUrl { baseUrlPort = port }
+        RC.fuzzBaseUrl @Valid.Api remoteUrl R.defaultConfig
+          >>= (`shouldSatisfy` isNothing)
+
+    it "fuzzes a server via URL string" $ do
+      Warp.testWithApplication (pure $ serve (Proxy @Valid.Api) Valid.server) $ \port -> do
+        let url = "http://127.0.0.1:" <> show port
+        RC.fuzzUrl @Valid.Api url R.defaultConfig
+          >>= (`shouldSatisfy` either (const False) isNothing)
+
   describe "Trace checks" $ do
     it "flags unauthorized responses via trace checks" $ do
       let unauthorizedToken = MinithesisAuth.Token 0

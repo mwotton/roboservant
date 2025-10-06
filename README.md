@@ -27,6 +27,29 @@ dictionary. This means that they are now available for the
 prerequisites of other calls, so as you proceed, more and more api
 calls become possible.
 
+### fuzzing remote servers
+
+You don't have to embed the server under test in-process. If you have
+an instance running elsewhere that implements the same Servant API, you
+can point Roboservant at its base URL and let the fuzzer drive the
+endpoints:
+
+``` haskell
+import qualified Roboservant.Client as RC
+import qualified Roboservant as R
+import Servant.Client (parseBaseUrl)
+
+checkRemote :: IO ()
+checkRemote = do
+  base <- either (fail . show) pure (parseBaseUrl "http://localhost:8080")
+  RC.fuzzBaseUrl @Api base R.defaultConfig >>= \case
+    Nothing -> putStrLn "remote server looks healthy"
+    Just report -> print report
+```
+
+For quick scripts you can also pass the URL as a string and let
+Roboservant parse it for you with `fuzzUrl`.
+
 We explicitly do not try to come up with plausible values that haven't
 somehow come back from the API. That's straying into QC/Hedgehog
 territory: if you want that, come up with the values on that side, and
