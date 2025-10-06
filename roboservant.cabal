@@ -114,6 +114,7 @@ test-suite roboservant-test
       Foo
       Headers
       MinithesisExample
+      MinithesisAuth
       Nested
       Post
       Product
