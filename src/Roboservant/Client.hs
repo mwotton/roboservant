@@ -30,6 +30,8 @@ import qualified Data.Text as T
 import Control.Monad.Reader
 import Data.Hashable
 import Network.HTTP.Types.Status
+import Network.HTTP.Client (Manager, defaultManagerSettings, newManager)
+
 
 -- fuzz :: forall api.
 --               (FlattenServer api, ToReifiedApi (Endpoints api)) =>
@@ -49,6 +51,29 @@ fuzz clientEnv
       (toReifiedClientApi
          (flattenClient @api apiClient) (Proxy @(Endpoints api)) clientEnv)
   where apiClient = client (Proxy @api)
+
+
+fuzzWithManager :: forall api.
+  (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
+  Manager -> BaseUrl -> Config -> IO (Maybe Report)
+fuzzWithManager manager baseUrl config =
+  let clientEnv = mkClientEnv manager baseUrl
+   in fuzz @api clientEnv config
+
+fuzzBaseUrl :: forall api.
+  (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
+  BaseUrl -> Config -> IO (Maybe Report)
+fuzzBaseUrl baseUrl config = do
+  manager <- newManager defaultManagerSettings
+  fuzzWithManager @api manager baseUrl config
+
+fuzzUrl :: forall api.
+  (ToReifiedClientApi (Endpoints api), FlattenClient api, HasClient ClientM api) =>
+  String -> Config -> IO (Either String (Maybe Report))
+fuzzUrl url config =
+  case parseBaseUrl url of
+    Left err -> pure (Left (show err))
+    Right baseUrl -> Right <$> fuzzBaseUrl @api baseUrl config
 
 
 
