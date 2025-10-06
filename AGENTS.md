@@ -26,3 +26,5 @@
 - Pull requests should describe the API surface touched, new tests, and any required seeds. **When creating PR descriptions, use a shell heredoc or write to a temporary file**; direct multi-line arguments introduce encoded newline characters in the tooling.
 - Link related issues where possible and note any manual verification steps (`stack test`, `stack exec`).
 
+## Tooling Notes
+- The GitHub CLI (`gh`) is available; prefer it for pushing branches and opening PRs from the command line.

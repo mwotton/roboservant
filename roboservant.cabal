@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.37.0.
+-- This file has been generated from package.yaml by hpack version 0.38.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -74,7 +74,7 @@ test-suite example
       Paths_roboservant
   hs-source-dirs:
       ./
-  ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -pgmL markdown-unlit
+  ghc-options: -Wall -fwrite-ide-info -hiedir=.hie -pgmL markdown-unlit -threaded -rtsopts -with-rtsopts=-N
   build-tool-depends:
       markdown-unlit:markdown-unlit
   build-depends:

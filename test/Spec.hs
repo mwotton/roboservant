@@ -13,8 +13,11 @@
 {-# LANGUAGE TypeFamilies #-}
 
 import qualified Breakdown
+import qualified Data.Dependent.Map as DM
 import Data.Dynamic (toDyn)
 import Data.Hashable (Hashable (hash))
+import qualified Data.IntSet as IntSet
+import qualified Data.List.NonEmpty as NEL
 import Data.Maybe (isNothing)
 import Data.Void (Void)
 import qualified Foo
@@ -39,6 +42,7 @@ import Network.Wai(Application)
 import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client       (Manager, defaultManagerSettings, managerResponseTimeout, newManager, responseTimeoutMicro)
 import qualified Network.Socket as Socket
+import qualified Type.Reflection as TR
 
 newTestManager :: IO Manager
 newTestManager = newManager defaultManagerSettings { managerResponseTimeout = responseTimeoutMicro 1000000 }
@@ -128,6 +132,20 @@ spec = do
       (`shouldSatisfy` isNothing)
 
   describe "BuildFrom" $ do
+    it "deduplicates identical stash values" $ do
+      let value = 42 :: Int
+          tr = TR.typeRep @Int
+          someTr = TR.SomeTypeRep tr
+          duplicates =
+            R.StashValue
+              (NEL.fromList [([R.Provenance someTr 0], value), ([R.Provenance someTr 1], value)])
+              (IntSet.singleton (hash value))
+          stash = R.Stash (DM.singleton tr duplicates)
+      case R.buildFrom @Int stash of
+        Nothing -> expectationFailure "expected stash entries"
+        Just stashValue -> do
+          NEL.length (R.getStashValue stashValue) `shouldBe` 1
+          IntSet.toList (R.stashHash stashValue) `shouldBe` [hash value]
     describe "headers (and sum types)" $
       fuzzBoth @Headers.Api "should find a failure that's dependent on using header info" Headers.server R.defaultConfig
       (`shouldSatisfy` serverFailure)

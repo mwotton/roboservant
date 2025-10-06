@@ -38,10 +38,10 @@ buildFrom = buildStash . buildFrom'
         (IntSet.singleton (hash x))
     addStash :: StashValue x -> StashValue x -> StashValue x
     addStash old (StashValue newVal _) =
-      let insertableVals = NEL.filter ((`IntSet.notMember` stashHash old) . hash) newVal
+      let insertableVals = NEL.filter ((`IntSet.notMember` stashHash old) . hash . snd) newVal
        in StashValue
             (addListToNE (getStashValue old) insertableVals)
-            (IntSet.union (IntSet.fromList . map hash . fmap snd . NEL.toList $ newVal) (stashHash old))
+            (IntSet.union (IntSet.fromList $ map (hash . snd) insertableVals) (stashHash old))
     addListToNE :: NonEmpty a -> [a] -> NonEmpty a
     addListToNE ne l = NEL.fromList (NEL.toList ne <> l)
 
