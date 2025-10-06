@@ -38,6 +38,7 @@ import qualified Roboservant.Server as RS
 import qualified Roboservant.Client as RC
 import qualified Seeded
 import qualified SummaryExample
+import qualified Minithesis.Sydtest as MinithesisSydtest
 import Test.Syd
 import qualified Valid
 import Servant ( Server, Proxy(..), serve, Endpoints, HasServer )
@@ -48,9 +49,11 @@ import qualified Network.Wai.Handler.Warp as Warp
 import           Network.HTTP.Client       (Manager, defaultManagerSettings, managerResponseTimeout, newManager, responseTimeoutMicro)
 import qualified Network.Socket as Socket
 import qualified Type.Reflection as TR
-import System.IO (stdout, stderr)
-import System.IO.Silently (hCapture)
 import Text.Read (readMaybe)
+import GHC.Stack (HasCallStack, withFrozenCallStack)
+import Minithesis (RunOptions (..), defaultRunOptions, resolveRunOptions, runDatabase, runDatabaseKey)
+import Minithesis.Integration (databaseDisabled, hashedLabel, scopedCallsite, scopedDatabase)
+import Minithesis.Property (ToProperty (..), applyPropertyOptions, runProperty)
 
 newTestManager :: IO Manager
 newTestManager = newManager defaultManagerSettings { managerResponseTimeout = responseTimeoutMicro 1000000 }
@@ -58,22 +61,45 @@ newTestManager = newManager defaultManagerSettings { managerResponseTimeout = re
 main :: IO ()
 main = sydTest spec
 
+data ExpectedOutcome
+  = ExpectPass (Maybe R.Report -> IO ())
+  | ExpectFail (Maybe R.Report -> IO ())
+
 fuzzBoth
-  :: forall a .
-     (R.ToReifiedApi (Endpoints a), HasServer a '[], RS.FlattenServer a, RC.ToReifiedClientApi (Endpoints a), RC.FlattenClient a,
-     HasClient ClientM a)
-  => String -> Server a -> R.Config -> (Maybe R.Report -> IO ()) -> Spec
-fuzzBoth name server config condition = do
-  it (name <> " via server") $
-    do
-      (logs, report) <-
-        hCapture [stdout, stderr] $ RS.fuzz @a server config
-      context ("captured server logs:\n" <> logs) $
-        condition report
+  :: forall a.
+     ( R.ToReifiedApi (Endpoints a)
+     , HasServer a '[]
+     , RS.FlattenServer a
+     , RC.ToReifiedClientApi (Endpoints a)
+     , RC.FlattenClient a
+     , HasClient ClientM a
+     )
+  => ExpectedOutcome
+  -> String
+  -> Server a
+  -> R.Config
+  -> Spec
+fuzzBoth expected name server config = do
+  let (checkResult, wrapProperty) = case expected of
+        ExpectPass cond -> (cond, id)
+        ExpectFail cond -> (cond, expectFailing)
+
+  wrapProperty $
+    MinithesisSydtest.prop (name <> " via server (property)") $
+      RS.fuzzProperty @a server config
+
+  wrapProperty $
+    around (withServer (serve (Proxy :: Proxy a) server)) $
+      propWithEnv (name <> " via client (property)") $ \(clientEnv :: ClientEnv) ->
+        RC.fuzzProperty @a clientEnv config
+
+  it (name <> " via server") $ do
+    report <- RS.fuzz @a server config
+    checkResult report
 
   around (withServer (serve (Proxy :: Proxy a) server)) $
-    it (name <> " via client") $ \(clientEnv::ClientEnv) -> do
-    RC.fuzz @a clientEnv config >>= condition
+    it (name <> " via client") $ \(clientEnv :: ClientEnv) -> do
+      RC.fuzz @a clientEnv config >>= checkResult
 
 withServer :: Application -> ((ClientEnv -> IO ()) -> IO ())
 withServer app inner = Warp.testWithApplication (pure app) $ \port -> do
@@ -83,6 +109,35 @@ withServer app inner = Warp.testWithApplication (pure app) $ \port -> do
           baseUrl <- parseBaseUrl "http://localhost"
           manager <- newTestManager
           pure $ mkClientEnv manager (baseUrl { baseUrlPort = port })
+
+propWithEnv ::
+  (HasCallStack, ToProperty p) =>
+  String ->
+  (a -> p) ->
+  SpecWith a
+propWithEnv = propWithEnvWith defaultRunOptions
+
+propWithEnvWith ::
+  (HasCallStack, ToProperty p) =>
+  RunOptions ->
+  String ->
+  (a -> p) ->
+  SpecWith a
+propWithEnvWith base name mkProperty =
+  withFrozenCallStack $
+    it name $ \env -> do
+      let propertyValue = toProperty (mkProperty env)
+          callsite = scopedCallsite [".propWithEnvWith", ".propWithEnv"]
+          fixedKey = "sydtest-" <> hashedLabel (name <> "@" <> callsite)
+      opts0 <- resolveRunOptions (applyPropertyOptions base propertyValue)
+      dbDisabled <- databaseDisabled
+      opts <-
+        if dbDisabled
+          then pure opts0 {runDatabase = Nothing}
+          else do
+            db <- scopedDatabase fixedKey
+            pure opts0 {runDatabase = Just db, runDatabaseKey = fixedKey}
+      runProperty opts propertyValue
 
 withClosedPort :: ((ClientEnv -> IO ()) -> IO ())
 withClosedPort inner = do
@@ -97,26 +152,27 @@ spec :: Spec
 spec = do
   describe "Basic usage" $ do
     describe "noError" $ do
-      fuzzBoth @Valid.Api "find no error in a basic app" Valid.server R.defaultConfig (`shouldSatisfy` isNothing)
-      fuzzBoth @Valid.RoutedApi "finds no error in a valid generic app"   Valid.routedServer R.defaultConfig (`shouldSatisfy` isNothing)
-      fuzzBoth @Records.Api "finds no error in a record-based generic app" Records.server R.defaultConfig (`shouldSatisfy` isNothing)
+      fuzzBoth @Valid.Api (ExpectPass (`shouldSatisfy` isNothing)) "find no error in a basic app" Valid.server R.defaultConfig
+      fuzzBoth @Valid.RoutedApi (ExpectPass (`shouldSatisfy` isNothing)) "finds no error in a valid generic app"   Valid.routedServer R.defaultConfig
+      fuzzBoth @Records.Api (ExpectPass (`shouldSatisfy` isNothing)) "finds no error in a record-based generic app" Records.server R.defaultConfig
       let complexSeeds = [R.hashedDyn (1 :: Int), R.hashedDyn (2 :: Int), R.hashedDyn (3 :: Int)]
-      fuzzBoth @Records.ComplexApi "finds no error in a complex record-based generic app" Records.complexServer R.defaultConfig { R.seed = complexSeeds } (`shouldSatisfy` isNothing)
-      fuzzBoth @Valid.Api "fails coverage check" Valid.server R.defaultConfig {R.coverageThreshold = 0.6}
-        (\r ->
+      fuzzBoth @Records.ComplexApi (ExpectPass (`shouldSatisfy` isNothing)) "finds no error in a complex record-based generic app" Records.complexServer R.defaultConfig { R.seed = complexSeeds }
+      fuzzBoth @Valid.Api
+        (ExpectFail (\r ->
            fmap (R.failureReason . R.rsException) r
            `shouldSatisfy` ( \case
                                Just (R.InsufficientCoverage _) -> True
                                _ -> False
-                           ))
+                           )))
+        "fails coverage check"
+        Valid.server
+        R.defaultConfig {R.coverageThreshold = 0.6}
     describe "posted body" $
-      fuzzBoth @Post.Api "passes a coverage check using a posted body" Post.server R.defaultConfig {R.coverageThreshold = 0.99}
-      (`shouldSatisfy` isNothing)
+      fuzzBoth @Post.Api (ExpectPass (`shouldSatisfy` isNothing)) "passes a coverage check using a posted body" Post.server R.defaultConfig {R.coverageThreshold = 0.99}
 
 
     describe "PUTted body" $
-      fuzzBoth @Put.Api "passes a coverage check using a posted body" Put.server R.defaultConfig {R.coverageThreshold = 0.99}
-      (`shouldSatisfy` isNothing)
+      fuzzBoth @Put.Api (ExpectPass (`shouldSatisfy` isNothing)) "passes a coverage check using a posted body" Put.server R.defaultConfig {R.coverageThreshold = 0.99}
 
 
     describe "seeded" $ do
@@ -126,22 +182,20 @@ spec = do
               { R.seed = [(toDyn res, hash res)],
                 R.maxReps = 1
               }
-      expectFailing $ fuzzBoth @Seeded.Api "finds an error using information passed in" Seeded.server
+      fuzzBoth @Seeded.Api (ExpectFail (`shouldSatisfy` serverFailure)) "finds an error using information passed in" Seeded.server
         seededConfig
-        (`shouldSatisfy` isNothing)
 
     describe "Foo" $
-      fuzzBoth @Foo.Api "finds an error in a basic app" Foo.server R.defaultConfig (`shouldSatisfy` serverFailure)
+      fuzzBoth @Foo.Api (ExpectFail (`shouldSatisfy` serverFailure)) "finds an error in a basic app" Foo.server R.defaultConfig
 
     describe "Records" $
       do
-        fuzzBoth @Records.Api "finds an error in a record-based generic app that throws" Records.badServer R.defaultConfig (`shouldSatisfy` serverFailure)
+        fuzzBoth @Records.Api (ExpectFail (`shouldSatisfy` serverFailure)) "finds an error in a record-based generic app that throws" Records.badServer R.defaultConfig
         let complexSeeds = [R.hashedDyn (10 :: Int), R.hashedDyn (20 :: Int), R.hashedDyn (30 :: Int)]
-        fuzzBoth @Records.ComplexApi "finds an error in a complex record-based generic app that throws" Records.complexBadServer R.defaultConfig { R.seed = complexSeeds } (`shouldSatisfy` serverFailure)
+        fuzzBoth @Records.ComplexApi (ExpectFail (`shouldSatisfy` serverFailure)) "finds an error in a complex record-based generic app that throws" Records.complexBadServer R.defaultConfig { R.seed = complexSeeds }
 
     describe "QueryParams" $
-      fuzzBoth @QueryParams.Api "can handle query params" QueryParams.server R.defaultConfig { R.seed = [R.hashedDyn (12::Int)] }
-      (`shouldSatisfy` isNothing)
+      fuzzBoth @QueryParams.Api (ExpectPass (`shouldSatisfy` isNothing)) "can handle query params" QueryParams.server R.defaultConfig { R.seed = [R.hashedDyn (12::Int)] }
 
   describe "BuildFrom" $ do
     it "deduplicates identical stash values" $ do
@@ -159,25 +213,20 @@ spec = do
           NEL.length (R.getStashValue stashValue) `shouldBe` 1
           IntSet.toList (R.stashHash stashValue) `shouldBe` [hash value]
     describe "headers (and sum types)" $
-      fuzzBoth @Headers.Api "should find a failure that's dependent on using header info" Headers.server R.defaultConfig
-      (`shouldSatisfy` serverFailure)
+      fuzzBoth @Headers.Api (ExpectFail (`shouldSatisfy` serverFailure)) "should find a failure that's dependent on using header info" Headers.server R.defaultConfig
     describe "product types" $
-      fuzzBoth @Product.Api "should find a failure that's dependent on creating a product" Product.server
+      fuzzBoth @Product.Api (ExpectFail (`shouldSatisfy` serverFailure)) "should find a failure that's dependent on creating a product" Product.server
       R.defaultConfig {R.seed = [R.hashedDyn 'a', R.hashedDyn (1 :: Int)]}
-      (`shouldSatisfy` serverFailure)
   describe "Server health" $ do
     it "reports when the server port is closed" $
       withClosedPort $ \(clientEnv :: ClientEnv) -> do
         RC.fuzz @Valid.Api clientEnv R.defaultConfig { R.maxReps = 1 }
           >>= (`shouldSatisfy` serverFailure)
   describe "Breakdown" $ do
-    fuzzBoth @Breakdown.ProductApi "handles products"  Breakdown.productServer R.defaultConfig
-      (`shouldSatisfy` serverFailure)
-    fuzzBoth @Breakdown.SumApi "handles sums" Breakdown.sumServer R.defaultConfig
-      (`shouldSatisfy` serverFailure)
+    fuzzBoth @Breakdown.ProductApi (ExpectFail (`shouldSatisfy` serverFailure)) "handles products"  Breakdown.productServer R.defaultConfig
+    fuzzBoth @Breakdown.SumApi (ExpectFail (`shouldSatisfy` serverFailure)) "handles sums" Breakdown.sumServer R.defaultConfig
   describe "flattening" $
-    fuzzBoth @Nested.FlatApi "can handle nested apis" Nested.server R.defaultConfig {R.coverageThreshold = 0.99}
-    (`shouldSatisfy` isNothing)
+    fuzzBoth @Nested.FlatApi (ExpectPass (`shouldSatisfy` isNothing)) "can handle nested apis" Nested.server R.defaultConfig {R.coverageThreshold = 0.99}
 
   describe "Minithesis prep" $ do
     it "shrinker should minimize to two calls" $ do
@@ -243,6 +292,7 @@ spec = do
             [call] -> do
               let summary = R.ctSummary call
               R.csMethod summary `shouldBe` "POST"
+              R.csStatus summary `shouldBe` Just 200
               R.csPathSegments summary `shouldBe` ["summary"]
               case R.csQueryItems summary of
                 [(key, value)] -> do
@@ -263,12 +313,12 @@ spec = do
                     responses
                 outcome -> expectationFailure $ "expected CallSucceeded, saw " <> show outcome
               let rendered = R.callSummaryLines summary
-              case rendered of
-                firstLine : rest -> do
-                  T.isPrefixOf "POST /summary" firstLine `shouldBe` True
-                  T.isInfixOf "?id=" firstLine `shouldBe` True
-                  (firstLine : rest) `shouldSatisfy` \ls -> any (T.isPrefixOf "  body: ") ls
-                [] -> expectationFailure "expected rendered summary lines"
+                  expected =
+                    [ "POST /summary?id=456 -> 200 ok"
+                    , "  body: 456"
+                    , "  response: 912"
+                    ]
+              rendered `shouldBe` expected
             calls -> expectationFailure $ "expected exactly one trace entry, saw " <> show (length calls)
 
   describe "Remote fuzzing" $ do

@@ -12,4 +12,5 @@ extra-deps:
   commit: 2ee9e15077fb95850318eb7fca33c49a7fd45fa8
   subdirs:
     - minithesis
+    - minithesis-sydtest
 - sydtest-0.21.0.0

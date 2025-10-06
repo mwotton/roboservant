@@ -31,7 +31,7 @@ import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
 import Data.Typeable (Typeable)
 import GHC.Generics ((:*:) (..))
-import GHC.TypeLits (KnownSymbol, Symbol, symbolVal)
+import GHC.TypeLits (KnownNat, KnownSymbol, Symbol, natVal, symbolVal)
 import Roboservant.Types.Breakdown
 import Roboservant.Types.BuildFrom
 import Roboservant.Types.Internal
@@ -70,6 +70,7 @@ newtype BodyPiece = BodyPiece ArgIndex
 
 data EndpointDoc as = EndpointDoc
   { docMethod :: Text,
+    docStatus :: Maybe Int,
     docPathPieces :: [PathPiece],
     docQueryPieces :: [QueryPiece],
     docHeaderPieces :: [HeaderPiece],
@@ -114,6 +115,7 @@ shiftDoc :: EndpointDoc as -> EndpointDoc (x ': as)
 shiftDoc EndpointDoc {..} =
   EndpointDoc
     { docMethod = docMethod,
+      docStatus = docStatus,
       docPathPieces = fmap shiftPathPiece docPathPieces,
       docQueryPieces = fmap shiftQueryPiece docQueryPieces,
       docHeaderPieces = fmap shiftHeaderPiece docHeaderPieces,
@@ -180,6 +182,7 @@ instance
   ( Typeable responseType
   , Breakdown responseType
   , ReflectMethod method
+  , KnownNat statusCode
   ) =>
   ToReifiedEndpoint (Verb method statusCode contentTypes responseType)
   where
@@ -189,6 +192,7 @@ instance
   reifiedEndpointDoc =
     EndpointDoc
       { docMethod = TE.decodeUtf8 (reflectMethod (Proxy @method)),
+        docStatus = Just (fromInteger (natVal (Proxy @statusCode))),
         docPathPieces = [],
         docQueryPieces = [],
         docHeaderPieces = [],
@@ -203,6 +207,7 @@ instance (ReflectMethod method) => ToReifiedEndpoint (NoContentVerb method)
   reifiedEndpointDoc =
     EndpointDoc
       { docMethod = TE.decodeUtf8 (reflectMethod (Proxy @method)),
+        docStatus = Just 204,
         docPathPieces = [],
         docQueryPieces = [],
         docHeaderPieces = [],

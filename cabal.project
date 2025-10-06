@@ -6,4 +6,10 @@ source-repository-package
   tag: 2ee9e15077fb95850318eb7fca33c49a7fd45fa8
   subdir: minithesis
 
+source-repository-package
+  type: git
+  location: https://github.com/lambdamechanic/minithesis-hs.git
+  tag: 2ee9e15077fb95850318eb7fca33c49a7fd45fa8
+  subdir: minithesis-sydtest
+
 constraints: envparse < 0.6

@@ -32,6 +32,19 @@ packages:
     git: https://github.com/lambdamechanic/minithesis-hs.git
     subdir: minithesis
 - completed:
+    commit: 2ee9e15077fb95850318eb7fca33c49a7fd45fa8
+    git: https://github.com/lambdamechanic/minithesis-hs.git
+    name: minithesis-sydtest
+    pantry-tree:
+      sha256: d6b392a3b80db52b6ecacbe84f58cfdf48ab2fa62b177d2c36976124bd49e61a
+      size: 233
+    subdir: minithesis-sydtest
+    version: 0.1.0.0
+  original:
+    commit: 2ee9e15077fb95850318eb7fca33c49a7fd45fa8
+    git: https://github.com/lambdamechanic/minithesis-hs.git
+    subdir: minithesis-sydtest
+- completed:
     hackage: sydtest-0.21.0.0@sha256:cffa077d86a835a7031735abf8922b1781f023100988d09880ff87357877e82f,2425
     pantry-tree:
       sha256: 40ad88d0081e463b5018d1dffeb41a4276e08f835f6fb0cc61d39a4f4d142c97

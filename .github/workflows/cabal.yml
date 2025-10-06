@@ -39,6 +39,9 @@ jobs:
           path: |
             ~/.cabal
           key: ${{ runner.os }}-${{ matrix.versions.ghc }}-${{ matrix.versions.cabal }}-cabal-global-${{ hashFiles('cabal.project') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ matrix.versions.ghc }}-${{ matrix.versions.cabal }}-cabal-global-
+            ${{ runner.os }}-${{ matrix.versions.ghc }}-${{ matrix.versions.cabal }}-
 
       - name: Cache cabal build
         id: cabal-local
@@ -59,7 +62,7 @@ jobs:
 
       - name: Test
         run: |
-          cabal test all --disable-optimization
+          cabal test all --enable-tests --disable-optimization
 
       - name: cabal check
         run: cabal check
