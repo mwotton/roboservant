@@ -46,7 +46,7 @@ import Data.Dynamic (Dynamic (..))
 import qualified Data.IntSet as IntSet
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NEL
-import Data.Maybe (mapMaybe)
+import Data.Maybe (listToMaybe, mapMaybe)
 import qualified Data.Set as Set
 import qualified Data.Vinyl as V
 import qualified Data.Vinyl.Curry as V
@@ -90,6 +90,10 @@ data FailureType
   | CheckerFailed
   | NoPossibleMoves
   | InsufficientCoverage Double
+  | TraceCheckFailed
+      { traceCheckLabel :: String,
+        traceCheckFailure :: String
+      }
   deriving (Show, Eq)
 
 data FuzzOp
@@ -102,7 +106,8 @@ data FuzzOp
 data FuzzState
   = FuzzState
       { path :: [FuzzOp],
-        stash :: Stash
+        stash :: Stash,
+        trace :: [CallTrace]
       }
   deriving (Show)
 
@@ -180,7 +185,8 @@ runFuzzProperty reifiedApi cfg testCase = do
       initialState =
         FuzzState
           { path = [],
-            stash = addToStash (seed cfg) mempty
+            stash = addToStash (seed cfg) mempty,
+            trace = []
           }
   finalState <- execStateT (driveFuzzer env) initialState
   evaluateCoverage env finalState
@@ -220,8 +226,54 @@ performCall env offset EndpointOption {..} = do
   selected <- V.rtraverse (selectArgument env) eoArgs
   let pathSegment = mkPathSegment offset selected
   modify' $ \fs -> fs {path = path fs <> [pathSegment]}
-  executeWithHandlers env pathSegment eoCall selected
+  result <- executeWithHandlers env pathSegment eoCall selected
+  recordTrace pathSegment selected result
+  runTraceChecks env
   runHealthCheck env
+
+recordTrace ::
+  (V.RecordToList as, V.RMap as) =>
+  FuzzOp ->
+  V.Rec SelectedArg as ->
+  Either InteractionError (NonEmpty (Dynamic, Int)) ->
+  StateT FuzzState IO ()
+recordTrace fuzzOp selected result =
+  modify'
+    (\fs ->
+        fs
+          { trace =
+              trace fs
+                <> [ CallTrace
+                       { ctOffset = apiOffset fuzzOp,
+                         ctProvenance = provenance fuzzOp,
+                         ctArguments = selectedArguments selected,
+                         ctResult = toTraceResult result
+                       }
+                   ]
+          }
+    )
+  where
+    selectedArguments :: (V.RecordToList as, V.RMap as) => V.Rec SelectedArg as -> [Dynamic]
+    selectedArguments =
+      recordToList'
+        (\(SelectedArg _ (tr :*: V.Identity val)) -> Dynamic tr val)
+
+    toTraceResult :: Either InteractionError (NonEmpty (Dynamic, Int)) -> TraceResult
+    toTraceResult = \case
+      Left err -> TraceError err
+      Right dyns -> TraceSuccess (fmap fst dyns)
+
+runTraceChecks :: FuzzEnv -> StateT FuzzState IO ()
+runTraceChecks env = do
+  state <- get
+  let checks = traceChecks (feConfig env)
+      failure = listToMaybe . mapMaybe (evaluateCheck (trace state)) $ checks
+  case failure of
+    Nothing -> pure ()
+    Just (name, reason) -> throw $ RoboservantException (TraceCheckFailed name reason) Nothing state
+  where
+    evaluateCheck :: [CallTrace] -> TraceCheck -> Maybe (String, String)
+    evaluateCheck callTrace TraceCheck {..} = (traceCheckName,) <$> traceCheck callTrace
 
 chooseEndpoint ::
   FuzzEnv ->
@@ -274,7 +326,7 @@ executeWithHandlers ::
   FuzzOp ->
   V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic, Int)))) ->
   V.Rec SelectedArg as ->
-  StateT FuzzState IO ()
+  StateT FuzzState IO (Either InteractionError (NonEmpty (Dynamic, Int)))
 executeWithHandlers env fuzzOp call selected =
   catches
     (execute env fuzzOp call selected)
@@ -288,7 +340,7 @@ execute ::
   FuzzOp ->
   V.Curried as (IO (Either InteractionError (NonEmpty (Dynamic, Int)))) ->
   V.Rec SelectedArg as ->
-  StateT FuzzState IO ()
+  StateT FuzzState IO (Either InteractionError (NonEmpty (Dynamic, Int)))
 execute env fuzzOp func selected = do
   state <- get
   liftIO $ logInfo (feConfig env) (show (fuzzOp, stash state))
@@ -297,12 +349,13 @@ execute env fuzzOp func selected = do
     Left interactionErr ->
       if fatalError interactionErr
         then throw interactionErr
-        else pure ()
-    Right dyns ->
+        else pure (Left interactionErr)
+    Right dyns -> do
       modify'
         ( \fs ->
             fs {stash = addToStash (NEL.toList dyns) (stash fs)}
         )
+      pure (Right dyns)
 
 runHealthCheck :: FuzzEnv -> StateT FuzzState IO ()
 runHealthCheck env =
@@ -351,11 +404,11 @@ displayDiagnostics env FuzzState {..} =
       <> DM.foldrWithKey (\_ v r -> (show . NEL.length . getStashValue $ v) : r) [] (getStash stash)
 
 maxRepsInt :: Config -> Int
-maxRepsInt Config {..}
-  | maxReps <= 0 = 1
+maxRepsInt Config {maxReps = reps}
+  | reps <= 0 = 1
   | otherwise =
       let upper = toInteger (maxBound :: Int)
-       in fromInteger (min upper maxReps)
+       in fromInteger (min upper reps)
 
 
 

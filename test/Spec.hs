@@ -17,8 +17,10 @@ import qualified Data.Dependent.Map as DM
 import Data.Dynamic (toDyn)
 import Data.Hashable (Hashable (hash))
 import qualified Data.IntSet as IntSet
+import Data.List (find)
 import qualified Data.List.NonEmpty as NEL
 import Data.Maybe (isNothing)
+import qualified Data.Text as T
 import Data.Void (Void)
 import qualified Foo
 import qualified Headers
@@ -28,6 +30,7 @@ import qualified Put
 import qualified Product
 import qualified QueryParams
 import qualified MinithesisExample
+import qualified MinithesisAuth
 import qualified Records
 import qualified Roboservant as R
 import qualified Roboservant.Server as RS
@@ -183,6 +186,36 @@ spec = do
           let callCount = length (R.path fuzzState)
           callCount `shouldBe` 2
 
+  describe "Trace checks" $ do
+    it "flags unauthorized responses via trace checks" $ do
+      let unauthorizedToken = MinithesisAuth.Token 0
+          unauthorizedCheck =
+            R.TraceCheck
+              { R.traceCheckName = "unauthorized access",
+                R.traceCheck = unauthorizedProperty
+              }
+          unauthorizedProperty calls =
+            case find isUnauthorized calls of
+              Nothing -> Nothing
+              Just _ -> Just "encountered 401 response"
+          isUnauthorized R.CallTrace {R.ctResult = R.TraceError err} =
+            (not . R.fatalError) err && "401" `T.isInfixOf` R.errorMessage err
+          isUnauthorized _ = False
+          config =
+            R.defaultConfig
+              { R.seed = [R.hashedDyn unauthorizedToken],
+                R.traceChecks = [unauthorizedCheck],
+                R.maxReps = 10,
+                R.maxRuntime = 0.05,
+                R.rngSeed = 2025
+              }
+      report <- RS.fuzz @MinithesisAuth.Api MinithesisAuth.server config
+      case report of
+        Nothing -> expectationFailure "expected a trace check failure"
+        Just R.Report {rsException = R.RoboservantException {..}} -> do
+          failureReason `shouldBe` R.TraceCheckFailed "unauthorized access" "encountered 401 response"
+          length (R.trace fuzzState) `shouldBe` 1
+
 serverFailure :: Maybe R.Report -> Bool
 serverFailure = \case
   Just R.Report {..} ->
@@ -219,6 +252,8 @@ deriving via (R.Compound Product.Foo) instance R.BuildFrom Product.Foo
 deriving via (R.Compound Breakdown.SomeSum) instance R.Breakdown Breakdown.SomeSum
 deriving via (R.Atom MinithesisExample.Secret) instance R.Breakdown MinithesisExample.Secret
 deriving via (R.Atom MinithesisExample.Secret) instance R.BuildFrom MinithesisExample.Secret
+deriving via (R.Atom MinithesisAuth.Token) instance R.Breakdown MinithesisAuth.Token
+deriving via (R.Atom MinithesisAuth.Token) instance R.BuildFrom MinithesisAuth.Token
 
 -- | `shouldFail` allows you to assert that a given `Spec` should contain at least one failing test.
 --   this is often useful when testing tests.
