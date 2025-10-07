@@ -385,6 +385,8 @@ configureRunOptions :: Config -> IO RunOptions
 configureRunOptions cfg = do
   let maxExamples = max 1 (min (maxRepsInt cfg) 64)
       relativeDb = ".minithesis-db"
+      key = databaseKey cfg
+  when (null key) $ fail "roboservant: Config.databaseKey must be set"
   baseOverride <- lookupEnv "MINITHESIS_DB"
   let dbPath = maybe relativeDb id baseOverride
   existsAsDir <- doesDirectoryExist dbPath
@@ -399,7 +401,7 @@ configureRunOptions cfg = do
         runSeed = Just (rngSeed cfg),
         runPrinter = logInfo cfg,
         runDatabase = Just db,
-        runDatabaseKey = "roboservant"
+        runDatabaseKey = key
       }
 
 applyConfigOptions :: Config -> RunOptions -> RunOptions
@@ -408,7 +410,11 @@ applyConfigOptions cfg opts =
     { runMaxExamples = max 1 (min (maxRepsInt cfg) 64),
       runQuiet = True,
       runSeed = Just (rngSeed cfg),
-      runPrinter = logInfo cfg
+      runPrinter = logInfo cfg,
+      runDatabaseKey =
+        case databaseKey cfg of
+          "" -> runDatabaseKey opts
+          key -> key
     }
 
 runFuzzProperty :: ReifiedApi -> Config -> TestCase -> IO ()

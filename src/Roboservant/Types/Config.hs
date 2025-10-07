@@ -19,6 +19,7 @@ data Config
         rngSeed :: Int,
         coverageThreshold :: Double,
         logInfo :: String -> IO (),
+        databaseKey :: String,
         traceChecks :: [TraceCheck]
       }
 
@@ -132,6 +133,7 @@ defaultConfig =
       rngSeed = 0,
       coverageThreshold = 0,
       logInfo = const (pure ()),
+      databaseKey = "",
       traceChecks = []
     }
 
