@@ -1,3 +1,4 @@
+{-# LANGUAGE GADTs #-}
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards #-}
 
@@ -18,7 +19,6 @@ data Config
         rngSeed :: Int,
         coverageThreshold :: Double,
         logInfo :: String -> IO (),
-        healthCheck :: IO (),
         traceChecks :: [TraceCheck]
       }
 
@@ -55,11 +55,12 @@ data CallTrace
       }
   deriving (Show)
 
-data TraceCheck
-  = TraceCheck
-      { traceCheckName :: String,
-        traceCheck :: [CallTrace] -> Maybe String
-      }
+data TraceCheck where
+  TraceCheck ::
+    (Typeable failure, Show failure) =>
+    { traceCheckName :: String,
+      traceCheck :: [CallTrace] -> IO (Maybe failure)
+    } -> TraceCheck
 
 emptySummary :: Text -> Maybe Int -> CallSummary
 emptySummary method status =
@@ -131,7 +132,6 @@ defaultConfig =
       rngSeed = 0,
       coverageThreshold = 0,
       logInfo = const (pure ()),
-      healthCheck = pure (),
       traceChecks = []
     }
 

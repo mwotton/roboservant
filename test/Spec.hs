@@ -19,6 +19,7 @@ import Data.Dynamic (toDyn)
 import Data.Hashable (Hashable (hash))
 import qualified Data.IntSet as IntSet
 import Data.List (find)
+import Data.IORef (newIORef, readIORef)
 import qualified Data.List.NonEmpty as NEL
 import Data.Maybe (isJust, isNothing)
 import qualified Data.Text as T
@@ -41,6 +42,7 @@ import qualified SummaryExample
 import qualified Minithesis.Sydtest as MinithesisSydtest
 import Test.Syd
 import qualified Valid
+import qualified StatefulTrace
 import Servant ( Server, Proxy(..), serve, Endpoints, HasServer )
 
 import Servant.Client(ClientEnv, mkClientEnv, baseUrlPort, parseBaseUrl,HasClient,ClientM)
@@ -266,7 +268,10 @@ spec = do
 
   describe "Call summaries" $ do
     it "includes path, query parameters, body, and response" $ do
-      let config =
+      let stopAfterFirstCall :: [R.CallTrace] -> Maybe String
+          stopAfterFirstCall calls =
+            if null calls then Nothing else Just "done"
+          config =
             R.defaultConfig
               { R.seed =
                   [ R.hashedDyn (123 :: Int),
@@ -275,8 +280,7 @@ spec = do
                 R.traceChecks =
                   [ R.TraceCheck
                       { R.traceCheckName = "stop after first call",
-                        R.traceCheck = \calls ->
-                          if null calls then Nothing else Just "done"
+                        R.traceCheck = pure . stopAfterFirstCall
                       }
                   ],
                 R.maxReps = 1,
@@ -341,8 +345,9 @@ spec = do
           unauthorizedCheck =
             R.TraceCheck
               { R.traceCheckName = "unauthorized access",
-                R.traceCheck = unauthorizedProperty
+                R.traceCheck = pure . unauthorizedProperty
               }
+          unauthorizedProperty :: [R.CallTrace] -> Maybe String
           unauthorizedProperty calls =
             case find isUnauthorized calls of
               Nothing -> Nothing
@@ -364,6 +369,32 @@ spec = do
         Just R.Report {rsException = R.RoboservantException {..}} -> do
           failureReason `shouldBe` R.TraceCheckFailed "unauthorized access" "encountered 401 response"
           length (R.trace fuzzState) `shouldBe` 1
+
+    it "runs IO-based trace checks with server context" $ do
+      counter <- newIORef 0
+      let apiServer = StatefulTrace.server counter
+          config =
+            R.defaultConfig
+              { R.traceChecks =
+                  [ R.TraceCheck
+                      { R.traceCheckName = "limits database writes",
+                        R.traceCheck = \_ -> do
+                          total <- readIORef counter
+                          pure $ if total <= 10 then Nothing else Just total
+                      }
+                  ],
+                R.maxReps = 25,
+                R.maxRuntime = 0.05,
+                R.rngSeed = 202408
+              }
+      report <- RS.fuzz @StatefulTrace.Api apiServer config
+      finalCount <- readIORef counter
+      case report of
+        Nothing -> expectationFailure "expected IO trace check failure"
+        Just R.Report {rsException = R.RoboservantException {..}} -> do
+          failureReason `shouldBe` R.TraceCheckFailed "limits database writes" (show finalCount)
+          R.trace fuzzState `shouldSatisfy` (not . null)
+      finalCount `shouldSatisfy` (> 10)
 
 serverFailure :: Maybe R.Report -> Bool
 serverFailure = \case

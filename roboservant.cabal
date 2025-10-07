@@ -132,6 +132,7 @@ test-suite roboservant-test
       QueryParams
       Records
       Seeded
+      StatefulTrace
       SummaryExample
       UnsafeIO
       Valid
