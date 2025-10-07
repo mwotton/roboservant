@@ -36,7 +36,6 @@ import Control.Exception.Lifted
     Handler (Handler),
     SomeAsyncException,
     SomeException,
-    catch,
     catches,
     handle,
     throw,
@@ -58,11 +57,12 @@ import qualified Data.IntSet as IntSet
 import qualified Data.Foldable as F
 import Data.List.NonEmpty (NonEmpty (..))
 import qualified Data.List.NonEmpty as NEL
-import Data.Maybe (fromMaybe, listToMaybe, mapMaybe)
+import Data.Maybe (fromMaybe, mapMaybe)
 import Data.Scientific (Scientific)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Encoding as TE
+import Data.Typeable (Typeable, cast)
 import qualified Data.Set as Set
 import qualified Data.Vinyl as V
 import qualified Data.Vinyl.Curry as V
@@ -469,7 +469,6 @@ performCall env offset EndpointOption {..} = do
       let summary = applyOutcome (eoDescribe selected) result
       recordTrace pathSegment selected result summary
       runTraceChecks env
-      runHealthCheck env
     Left ex@(RoboservantException {failureReason = ServerCrashed, serverException = Just some}) ->
       case Exception.fromException some of
         Just interactionErr -> do
@@ -516,13 +515,32 @@ runTraceChecks :: FuzzEnv -> StateT FuzzState IO ()
 runTraceChecks env = do
   state <- get
   let checks = traceChecks (feConfig env)
-      failure = listToMaybe . mapMaybe (evaluateCheck (trace state)) $ checks
-  case failure of
-    Nothing -> pure ()
-    Just (name, reason) -> throw $ RoboservantException (TraceCheckFailed name reason) Nothing state
+      calls = trace state
+  result <- try (liftIO (evaluateChecks calls checks))
+  case result of
+    Left (err :: SomeException) -> throw $ RoboservantException CheckerFailed (Just err) state
+    Right Nothing -> pure ()
+    Right (Just (name, reason)) -> throw $ RoboservantException (TraceCheckFailed name reason) Nothing state
   where
-    evaluateCheck :: [CallTrace] -> TraceCheck -> Maybe (String, String)
-    evaluateCheck callTrace TraceCheck {..} = (traceCheckName,) <$> traceCheck callTrace
+    evaluateChecks :: [CallTrace] -> [TraceCheck] -> IO (Maybe (String, String))
+    evaluateChecks callTrace = go
+      where
+        go [] = pure Nothing
+        go (TraceCheck {..} : rest) = do
+          verdict <- traceCheck callTrace
+          case verdict of
+            Nothing -> go rest
+            Just failure -> pure (Just (traceCheckName, renderFailure failure))
+
+    renderFailure :: (Typeable failure, Show failure) => failure -> String
+    renderFailure failure =
+      maybe
+        (maybe (show failure) T.unpack maybeText)
+        id
+        maybeString
+      where
+        maybeString = cast failure :: Maybe String
+        maybeText = cast failure :: Maybe Text
 
 chooseEndpoint ::
   FuzzEnv ->
@@ -605,12 +623,6 @@ execute env fuzzOp func selected = do
             fs {stash = addToStash (NEL.toList dyns) (stash fs)}
         )
       pure (Right dyns)
-
-runHealthCheck :: FuzzEnv -> StateT FuzzState IO ()
-runHealthCheck env =
-  catch
-    (liftIO (healthCheck (feConfig env)))
-    (\(e :: SomeException) -> throw . RoboservantException CheckerFailed (Just e) =<< get)
 
 selectFrom :: FuzzEnv -> [a] -> StateT FuzzState IO a
 selectFrom _ [] = liftIO . throw . RoboservantException NoPossibleMoves Nothing =<< get

@@ -106,13 +106,18 @@ let config =
         { R.traceChecks =
             [ R.TraceCheck
                 { R.traceCheckName = "no unauthorized",
-                  R.traceCheck = noUnauthorized
+                  R.traceCheck = pure . noUnauthorized
                 }
             ]
         }
 
 RS.fuzz @Api server config >>= (`shouldBe` Nothing)
 ```
+
+`TraceCheck` actions run in `IO`, so they can query databases,
+metrics, or any other state the server closes over. Simply return
+`Nothing` when the invariant holds or `Just failure` (for any
+`Show`able type) when it does not.
 
 ### reading failure reports
 
