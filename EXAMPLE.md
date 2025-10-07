@@ -107,6 +107,7 @@ Roboservant.Types.Config for details.
 config :: Config
 config = defaultConfig
   { coverageThreshold = 0.99
+  , databaseKey = "example-config"
   }
 ```
 

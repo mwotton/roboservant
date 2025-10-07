@@ -82,26 +82,31 @@ fuzzBoth
   -> R.Config
   -> Spec
 fuzzBoth expected name server config = do
-  let (checkResult, wrapProperty) = case expected of
+  let configFor suffix = config { R.databaseKey = name <> suffix }
+      serverPropertyConfig = configFor ":server(property)"
+      clientPropertyConfig = configFor ":client(property)"
+      serverConfig = configFor ":server"
+      clientConfig = configFor ":client"
+      (checkResult, wrapProperty) = case expected of
         ExpectPass cond -> (cond, id)
         ExpectFail cond -> (cond, expectFailing)
 
   wrapProperty $
     MinithesisSydtest.prop (name <> " via server (property)") $
-      RS.fuzzProperty @a server config
+      RS.fuzzProperty @a server serverPropertyConfig
 
   wrapProperty $
     around (withServer (serve (Proxy :: Proxy a) server)) $
       propWithEnv (name <> " via client (property)") $ \(clientEnv :: ClientEnv) ->
-        RC.fuzzProperty @a clientEnv config
+        RC.fuzzProperty @a clientEnv clientPropertyConfig
 
   it (name <> " via server") $ do
-    report <- RS.fuzz @a server config
+    report <- RS.fuzz @a server serverConfig
     checkResult report
 
   around (withServer (serve (Proxy :: Proxy a) server)) $
     it (name <> " via client") $ \(clientEnv :: ClientEnv) -> do
-      RC.fuzz @a clientEnv config >>= checkResult
+      RC.fuzz @a clientEnv clientConfig >>= checkResult
 
 withServer :: Application -> ((ClientEnv -> IO ()) -> IO ())
 withServer app inner = Warp.testWithApplication (pure app) $ \port -> do
@@ -222,8 +227,8 @@ spec = do
   describe "Server health" $ do
     it "reports when the server port is closed" $
       withClosedPort $ \(clientEnv :: ClientEnv) -> do
-        RC.fuzz @Valid.Api clientEnv R.defaultConfig { R.maxReps = 1 }
-          >>= (`shouldSatisfy` serverFailure)
+      RC.fuzz @Valid.Api clientEnv R.defaultConfig { R.maxReps = 1, R.databaseKey = "closed-port" }
+        >>= (`shouldSatisfy` serverFailure)
   describe "Breakdown" $ do
     fuzzBoth @Breakdown.ProductApi (ExpectFail (`shouldSatisfy` serverFailure)) "handles products"  Breakdown.productServer R.defaultConfig
     fuzzBoth @Breakdown.SumApi (ExpectFail (`shouldSatisfy` serverFailure)) "handles sums" Breakdown.sumServer R.defaultConfig
@@ -236,7 +241,8 @@ spec = do
             R.defaultConfig
               { R.rngSeed = 2024,
                 R.maxRuntime = 0.05,
-                R.maxReps = 200
+                R.maxReps = 200,
+                R.databaseKey = "minithesis-example-shrinker"
               }
       report <- RS.fuzz @MinithesisExample.Api MinithesisExample.server config
       case report of
@@ -251,7 +257,8 @@ spec = do
             R.defaultConfig
               { R.rngSeed = 2024,
                 R.maxRuntime = 0.05,
-                R.maxReps = 200
+                R.maxReps = 200,
+                R.databaseKey = "minithesis-example-report"
               }
       report <- RS.fuzz @MinithesisExample.Api MinithesisExample.server config
       case report of
@@ -285,7 +292,8 @@ spec = do
                   ],
                 R.maxReps = 1,
                 R.maxRuntime = 0.01,
-                R.rngSeed = 0
+                R.rngSeed = 0,
+                R.databaseKey = "summary-call-check"
               }
       report <- RS.fuzz @SummaryExample.Api SummaryExample.server config
       case report of
@@ -330,13 +338,13 @@ spec = do
       Warp.testWithApplication (pure $ serve (Proxy @Valid.Api) Valid.server) $ \port -> do
         baseUrl <- parseBaseUrl "http://127.0.0.1"
         let remoteUrl = baseUrl { baseUrlPort = port }
-        RC.fuzzBaseUrl @Valid.Api remoteUrl R.defaultConfig
+        RC.fuzzBaseUrl @Valid.Api remoteUrl R.defaultConfig { R.databaseKey = "remote-base-url" }
           >>= (`shouldSatisfy` isNothing)
 
     it "fuzzes a server via URL string" $ do
       Warp.testWithApplication (pure $ serve (Proxy @Valid.Api) Valid.server) $ \port -> do
         let url = "http://127.0.0.1:" <> show port
-        RC.fuzzUrl @Valid.Api url R.defaultConfig
+        RC.fuzzUrl @Valid.Api url R.defaultConfig { R.databaseKey = "remote-url" }
           >>= (`shouldSatisfy` either (const False) isNothing)
 
   describe "Trace checks" $ do
@@ -361,7 +369,8 @@ spec = do
                 R.traceChecks = [unauthorizedCheck],
                 R.maxReps = 10,
                 R.maxRuntime = 0.05,
-                R.rngSeed = 2025
+                R.rngSeed = 2025,
+                R.databaseKey = "unauthorized-trace-check"
               }
       report <- RS.fuzz @MinithesisAuth.Api MinithesisAuth.server config
       case report of
@@ -385,7 +394,8 @@ spec = do
                   ],
                 R.maxReps = 25,
                 R.maxRuntime = 0.05,
-                R.rngSeed = 202408
+                R.rngSeed = 202408,
+                R.databaseKey = "io-trace-check"
               }
       report <- RS.fuzz @StatefulTrace.Api apiServer config
       finalCount <- readIORef counter

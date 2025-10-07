@@ -48,7 +48,7 @@ main :: IO ()
 main = sydTest $ do
   describe "ping api" $
     it "stays healthy under fuzzing" $ do
-      RS.fuzz @Api server R.defaultConfig {R.maxReps = 200}
+      RS.fuzz @Api server R.defaultConfig {R.maxReps = 200, R.databaseKey = "docs-server"}
         >>= (`shouldBe` Nothing)
 ```
 
@@ -69,7 +69,7 @@ remoteSpec :: Spec
 remoteSpec =
   it "accepts the happy-path flow" $ do
     base <- either (fail . show) pure (parseBaseUrl "http://localhost:8080")
-    RC.fuzzBaseUrl @Api base R.defaultConfig >>= (`shouldBe` Nothing)
+    RC.fuzzBaseUrl @Api base R.defaultConfig { R.databaseKey = "docs-remote" } >>= (`shouldBe` Nothing)
 
 main :: IO ()
 main = sydTest remoteSpec
@@ -102,7 +102,7 @@ noUnauthorized calls =
     isUnauthorized _ = False
 
 let config =
-      R.defaultConfig
+      R.defaultConfig { R.databaseKey = "docs-trace" }
         { R.traceChecks =
             [ R.TraceCheck
                 { R.traceCheckName = "no unauthorized",
@@ -191,7 +191,7 @@ For those cases, override the `seed` in the `Config` with a
 list of seed values, suitably hashed:
 
 ``` haskell
-defaultConfig { seed = [hashedDyn creds, hashedDyn userJwt]}
+defaultConfig { seed = [hashedDyn creds, hashedDyn userJwt], databaseKey = "docs-client"}
 ```
 
 ## why not servant-quickcheck?
